@@ -179,7 +179,8 @@ describe("compatibility layer registry", () => {
       expect(typeof layer.listItems).toBe("function");
       expect(typeof layer.loadEngines).toBe("function");
       expect(typeof layer.lock).toBe("function");
-      expect(layer.noteKeys.length).toBeGreaterThan(0);
+      expect(layer.label.length).toBeGreaterThan(0);
+      expect(layer.settingKey.length).toBeGreaterThan(0);
     }
   });
 });

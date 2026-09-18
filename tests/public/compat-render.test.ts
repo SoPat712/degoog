@@ -3,6 +3,8 @@ import type { CompatCatalogItem } from "../../src/shared/compat-layers";
 
 let compatGroups: (items: CompatCatalogItem[]) => { key: string; items: CompatCatalogItem[] }[];
 let compatPackages: (item: CompatCatalogItem) => string[];
+let compatListHtml: (items: CompatCatalogItem[], layer: string) => string;
+let compatShellHtml: (layer: string) => string;
 
 const makeItem = (over: Partial<CompatCatalogItem> = {}): CompatCatalogItem => ({
   code: "mojeek",
@@ -15,11 +17,33 @@ const makeItem = (over: Partial<CompatCatalogItem> = {}): CompatCatalogItem => (
 });
 
 beforeAll(async () => {
-  const stub = { scopedT: (): ((key: string) => string) => (key: string) => key };
-  Object.assign(globalThis, { window: stub });
+  const stubT =
+    (): ((key: string, vars?: Record<string, string>) => string) =>
+    (key: string, vars?: Record<string, string>) =>
+      vars?.layer ? `${key}|${vars.layer}` : key;
+  const createEl = (): { textContent: string; innerHTML: string } => {
+    let text = "";
+    return {
+      set textContent(value: string) {
+        text = String(value);
+      },
+      get textContent() {
+        return text;
+      },
+      get innerHTML() {
+        return text;
+      },
+    };
+  };
+  Object.assign(globalThis, {
+    window: { scopedT: stubT },
+    document: { createElement: createEl },
+  });
   const render = await import("../../src/client/settings/engines/compat-render");
   compatGroups = render.compatGroups;
   compatPackages = render.compatPackages;
+  compatListHtml = render.compatListHtml;
+  compatShellHtml = render.compatShellHtml;
 });
 
 describe("compatibility layer catalogue rendering", () => {
@@ -41,5 +65,21 @@ describe("compatibility layer catalogue rendering", () => {
     });
     expect(compatPackages(item)).toEqual(["Babel"]);
     expect(compatPackages(makeItem())).toEqual([]);
+  });
+
+  test("search placeholder and empty state carry the layer name", () => {
+    expect(compatShellHtml("4get")).toContain(
+      "settings-page.extensions.compat-search|4get",
+    );
+    expect(compatListHtml([], "SearX")).toContain(
+      "settings-page.extensions.compat-empty|SearX",
+    );
+  });
+
+  test("shared files hint and update tooltip name the layer", () => {
+    const shared = compatListHtml([makeItem({ deps: ["backend"] })], "4get");
+    expect(shared).toContain("settings-page.extensions.compat-shared-hint|4get");
+    const update = compatListHtml([makeItem({ installed: true })], "SearX");
+    expect(update).toContain("settings-page.extensions.compat-update|SearX");
   });
 });

@@ -37,30 +37,31 @@ const _say = (message: string, failed = false): void => {
   el.classList.toggle("compat-status--error", failed);
 };
 
-const _paint = (items: CompatCatalogItem[], query: string): void => {
+const _paint = (items: CompatCatalogItem[], query: string, layer: string): void => {
   const list = document.querySelector<HTMLElement>(`#${MODAL_BODY_ID} #compat-list`);
   if (!list) return;
-  list.innerHTML = compatListHtml(compatFilter(items, query));
+  list.innerHTML = compatListHtml(compatFilter(items, query), layer);
   list
     .querySelectorAll<HTMLImageElement>(".compat-favicon")
     .forEach(attachFaviconFallback);
 };
 
-const _warnings = (item: CompatCatalogItem): string[] => {
+const _warnings = (item: CompatCatalogItem, layer: string): string[] => {
   const notes: string[] = [];
   const packages = compatPackages(item);
   if (item.missingDeps.length) {
     notes.push(
       t(`${KEY}compat-deps-body`, {
+        layer,
         engine: item.name,
         deps: item.missingDeps.join(", "),
-        count: String(item.missingDeps.length),
       }),
     );
   }
   if (packages.length) {
     notes.push(
       t(`${KEY}compat-runtime-body`, {
+        layer,
         engine: item.name,
         packages: packages.join(" "),
       }),
@@ -69,9 +70,12 @@ const _warnings = (item: CompatCatalogItem): string[] => {
   return notes;
 };
 
-const _depsOkay = async (item: CompatCatalogItem | undefined): Promise<boolean> => {
+const _depsOkay = async (
+  item: CompatCatalogItem | undefined,
+  layer: string,
+): Promise<boolean> => {
   if (!item) return true;
-  const notes = _warnings(item);
+  const notes = _warnings(item, layer);
   if (!notes.length) return true;
   return confirmModal({
     title: t(
@@ -86,10 +90,11 @@ const _depsOkay = async (item: CompatCatalogItem | undefined): Promise<boolean> 
 export const openCompatModal = async (layer: CompatLayerView): Promise<void> => {
   let items: CompatCatalogItem[] = [];
   let query = "";
+  const name = layer.label;
 
   openCustomModal({
-    title: t(`${KEY}compat-title`, { layer: layer.label }),
-    body: compatShellHtml(),
+    title: t(`${KEY}compat-title`, { layer: name }),
+    body: compatShellHtml(name),
     wide: true,
   });
 
@@ -106,13 +111,14 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
     try {
       await sendCompat(layer.id, action, code);
       items = await fetchCompat(layer.id);
-      _paint(items, query);
+      _paint(items, query, name);
       window.dispatchEvent(new CustomEvent("extensions-saved"));
       _say(
         t(
           action === CompatAction.Update
             ? `${KEY}compat-updated`
             : `${KEY}compat-restart`,
+          { layer: name },
         ),
       );
     } catch (err) {
@@ -126,7 +132,7 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
     btn: HTMLButtonElement,
   ): Promise<void> => {
     const item = items.find((entry) => entry.code === code);
-    if (!(await _depsOkay(item))) return;
+    if (!(await _depsOkay(item, name))) return;
     await runAction(CompatAction.Install, code, btn);
   };
 
@@ -145,12 +151,12 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
   const search = body.querySelector<HTMLInputElement>("#compat-search-input");
   search?.addEventListener("input", () => {
     query = search.value;
-    _paint(items, query);
+    _paint(items, query, name);
   });
 
   try {
     items = await fetchCompat(layer.id);
-    _paint(items, query);
+    _paint(items, query, name);
   } catch (err) {
     _say(err instanceof Error ? err.message : String(err), true);
   }

@@ -33,7 +33,6 @@ export interface CompatLayerInfo {
   id: CompatLayerId;
   label: string;
   settingKey: string;
-  noteKeys: readonly string[];
 }
 
 export enum CompatAction {

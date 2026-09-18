@@ -23,11 +23,12 @@ let _orderSavedHandler: (() => void) | null = null;
 
 const _layerBtnId = (layer: CompatLayerView): string => `open-compat-${layer.id}`;
 
-const _layerCard = (layer: CompatLayerView): string => `
-      <div class="compat-note">
-        <p class="compat-note-intro">${escapeHtml(t(`settings-page.extensions.${layer.id}-note`))}</p>
-        <ul class="compat-note-list">${layer.noteKeys.map((key) => `<li>${escapeHtml(t(`settings-page.extensions.${key}`))}</li>`).join("")}</ul>
-      </div>`;
+const COMPAT_NOTES = [
+  "compat-note-native",
+  "compat-note-upstream",
+  "compat-note-updates",
+  "compat-note-needs",
+];
 
 const _layerButton = (layer: CompatLayerView): string =>
   `<button class="btn btn--secondary degoog-btn degoog-btn--secondary" id="${_layerBtnId(layer)}" type="button">${escapeHtml(t("settings-page.extensions.compat-open", { layer: layer.label }))}</button>`;
@@ -39,7 +40,9 @@ const _compatSection = (layers: CompatLayerView[]): string => `
         <div class="floating-section-icon"><i class="fa-solid fa-flask"></i></div>
       </div>
       <p class="settings-desc">${escapeHtml(t("settings-page.extensions.compat-desc"))}</p>
-      ${layers.map(_layerCard).join("")}
+      <div class="compat-note">
+        <ul class="compat-note-list">${COMPAT_NOTES.map((key) => `<li>${escapeHtml(t(`settings-page.extensions.${key}`))}</li>`).join("")}</ul>
+      </div>
       <div class="settings-page-actions">${layers.map(_layerButton).join("")}</div>
     </section>`;
 

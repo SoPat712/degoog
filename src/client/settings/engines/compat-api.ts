@@ -14,7 +14,6 @@ export interface CompatLayerView {
   id: CompatLayerId;
   label: string;
   settingKey: string;
-  noteKeys: readonly string[];
 }
 
 export const COMPAT_LAYER_VIEWS: readonly CompatLayerView[] = Object.freeze([
@@ -22,23 +21,11 @@ export const COMPAT_LAYER_VIEWS: readonly CompatLayerView[] = Object.freeze([
     id: CompatLayerId.Searx,
     label: "SearX",
     settingKey: "searxCompatEnabled",
-    noteKeys: Object.freeze([
-      "searx-note-native",
-      "searx-note-upstream",
-      "searx-note-filters",
-      "searx-note-shared",
-    ]),
   },
   {
     id: CompatLayerId.FourGet,
     label: "4get",
     settingKey: "fourgetCompatEnabled",
-    noteKeys: Object.freeze([
-      "4get-note-native",
-      "4get-note-upstream",
-      "4get-note-php",
-      "4get-note-shared",
-    ]),
   },
 ]);
 
