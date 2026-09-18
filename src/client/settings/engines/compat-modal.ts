@@ -1,4 +1,5 @@
 import { attachFaviconFallback } from "../../utils/favicon";
+import { bindCompatClicks } from "./compat-clicks";
 import { openCustomModal } from "../../modules/modals/settings-modal/modal";
 import { confirmModal } from "../../modules/modals/confirm-modal/confirm";
 import {
@@ -136,7 +137,7 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
     await runAction(CompatAction.Install, code, btn);
   };
 
-  body.addEventListener("click", (event) => {
+  bindCompatClicks(body, (event) => {
     const target = event.target as HTMLElement;
     const install = target.closest<HTMLButtonElement>(".compat-btn-install");
     const update = target.closest<HTMLButtonElement>(".compat-btn-update");

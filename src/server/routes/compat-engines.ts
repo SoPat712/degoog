@@ -8,6 +8,7 @@ import {
 import { CompatAction } from "../../shared/compat-layers";
 import { ReloadMode, reloadSync } from "../extensions/store/reload-sync";
 import { ExtensionStoreType } from "../types";
+import { scrubLog } from "../extensions/compatibility-layer/scrub-log";
 import { logger } from "../utils/logger";
 
 const NS = "compat-engines";
@@ -40,10 +41,9 @@ const _refresh = async (code: string): Promise<void> => {
 };
 
 const _codeFrom = async (c: Context): Promise<string> => {
-  const body = (await c.req.json<{ code?: string }>().catch(() => ({}))) as {
-    code?: string;
-  };
-  return body.code?.trim() ?? "";
+  const body: unknown = await c.req.json().catch(() => ({}));
+  if (typeof body !== "object" || body === null || !("code" in body)) return "";
+  return typeof body.code === "string" ? body.code.trim() : "";
 };
 
 const ACTIONS: Record<CompatAction, keyof CompatLayerDef> = {
@@ -78,6 +78,7 @@ const _mutate = (action: CompatAction) => async (c: Context) => {
     });
     return c.json({ ok: true });
   } catch (e) {
+    logger.warn(NS, `${layer.label} ${action} of ${scrubLog(code)} failed`, e);
     const message = e instanceof Error ? e.message : FAILURES[action];
     return c.json({ error: message }, 400);
   }

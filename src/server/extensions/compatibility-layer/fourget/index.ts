@@ -20,8 +20,10 @@ import {
 import { getInstanceSettings } from "../../../utils/server-settings";
 import { CompatLayerId } from "../../../../shared/compat-layers";
 import { runBridge, type RpcFetchReply, type RpcHandlers, type RunnerSpec } from "../rpc";
+import { scrubLog } from "../scrub-log";
 import { catalogEntry, isKnownScraper, isSharedFile } from "./catalog";
 import { optionFields, overridesFrom, type FourGetFilters } from "./engine-config";
+import { nptKey } from "./npt-key";
 import { FOURGET_PAGES, mapPages, type FourGetPage } from "./pages";
 import { scrapersDir, sharedLibDir, stagingRoot } from "./paths";
 import { phpBinary, phpStatus } from "./php-runtime";
@@ -206,11 +208,6 @@ const _browserHeaders = (context?: EngineContext): Record<string, string> => ({
   "Accept-Language": context?.buildAcceptLanguage?.() ?? DEFAULT_ACCEPT_LANGUAGE,
 });
 
-const CONTROL_CHARS = new RegExp("[\\u0000-\\u001f\\u007f-\\u009f]", "g");
-
-export const scrubLog = (raw: string): string =>
-  String(raw ?? "").replace(CONTROL_CHARS, "");
-
 const _isWebUrl = (raw: string): boolean => {
   try {
     const { protocol } = new URL(raw);
@@ -355,6 +352,23 @@ class FourGetCompatEngine implements SearchEngine {
     return useCache<string>(`${CACHE_NAMESPACE}:npt:${this.spec.engineId}:${type}`, NPT_TTL_MS);
   }
 
+  private tokenKey(
+    query: string,
+    page: number,
+    timeFilter: TimeFilter,
+    context?: EngineContext,
+  ): string {
+    return nptKey({
+      query,
+      page,
+      nsfw: this.nsfw(context),
+      timeFilter,
+      dateFrom: context?.dateFrom,
+      dateTo: context?.dateTo,
+      overrides: this.overrides,
+    });
+  }
+
   async executeSearch(
     query: string,
     page = 1,
@@ -368,7 +382,7 @@ class FourGetCompatEngine implements SearchEngine {
     const tokens = this.tokens(type);
     let npt: string | false = false;
     if (page > 1) {
-      const stored = await tokens.get(`${query}::${page}`);
+      const stored = await tokens.get(this.tokenKey(query, page, timeFilter, context));
       if (!stored) {
         logger.debug(NS, `${this.spec.code} has no token for page ${page}, stopping there`);
         context?.pagination?.({ total: page - 1 });
@@ -398,7 +412,9 @@ class FourGetCompatEngine implements SearchEngine {
       _bridge(this.spec.engineId, this.name, context),
     );
 
-    if (result.npt) await tokens.set(`${query}::${page + 1}`, result.npt);
+    if (result.npt) {
+      await tokens.set(this.tokenKey(query, page + 1, timeFilter, context), result.npt);
+    }
     context?.pagination?.({ total: result.npt ? page + 1 : page });
     return result.results;
   }

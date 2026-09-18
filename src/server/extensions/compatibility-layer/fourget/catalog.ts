@@ -79,13 +79,105 @@ export const FOURGET_CATALOG: readonly FourGetCatalogEntry[] = Object.freeze([
     deps: ["backend", "fuckhtml"],
     needsApiKey: true,
   },
+  {
+    code: "pexels",
+    name: "Pexels",
+    types: ["images"],
+    site: "https://www.pexels.com",
+    deps: ["backend"],
+  },
+  {
+    code: "pixabay",
+    name: "Pixabay",
+    types: ["images"],
+    site: "https://pixabay.com",
+    deps: ["backend"],
+  },
+  {
+    code: "unsplash",
+    name: "Unsplash",
+    types: ["images"],
+    site: "https://unsplash.com",
+    deps: ["backend", "fuckhtml"],
+  },
+  {
+    code: "ftm",
+    name: "FindThatMeme",
+    types: ["images"],
+    site: "https://findthatmeme.com",
+    deps: ["backend"],
+  },
+  {
+    code: "pinterest",
+    name: "Pinterest",
+    types: ["images"],
+    site: "https://www.pinterest.com",
+    deps: ["backend"],
+    wantsImpersonation: true,
+  },
+  {
+    code: "sepiasearch",
+    name: "Sepia Search",
+    types: ["videos"],
+    site: "https://sepiasearch.org",
+    deps: ["backend"],
+  },
+  {
+    code: "yt",
+    name: "YouTube",
+    types: ["videos"],
+    site: "https://www.youtube.com",
+    deps: ["backend", "fuckhtml"],
+    wantsImpersonation: true,
+  },
+  {
+    code: "sc",
+    name: "SoundCloud",
+    types: ["music"],
+    site: "https://soundcloud.com",
+    deps: ["backend", "fuckhtml"],
+  },
+  {
+    code: "purili",
+    name: "Purili",
+    types: ["web", "videos"],
+    site: "https://puri.li",
+    deps: ["backend"],
+  },
+  {
+    code: "naver",
+    name: "Naver",
+    types: ["web", "images", "videos"],
+    site: "https://search.naver.com",
+    deps: ["backend", "fuckhtml"],
+    wantsImpersonation: true,
+  },
+  {
+    code: "coccoc",
+    name: "Cốc Cốc",
+    types: ["web", "videos"],
+    site: "https://coccoc.com",
+    deps: ["backend", "fuckhtml"],
+    wantsImpersonation: true,
+  },
+  {
+    code: "solofield",
+    name: "Solofield",
+    types: ["web", "images", "videos"],
+    site: "https://solofield.net",
+    deps: ["backend", "fuckhtml"],
+  },
 ]);
+
+const SCRAPER_CODE = /^[a-z0-9_-]+$/i;
+
+export const isSaneScraperCode = (code: string): boolean => SCRAPER_CODE.test(code);
 
 const _extraCodes = (): string[] =>
   (process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS ?? "")
     .split(",")
     .map((code) => code.trim())
-    .filter(Boolean);
+    .filter(isSaneScraperCode);
 
 export const catalogEntry = (code: string): FourGetCatalogEntry | undefined =>
   FOURGET_CATALOG.find((entry) => entry.code === code);

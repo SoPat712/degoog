@@ -122,6 +122,13 @@ describe("/api/compat/:layer", () => {
     expect(((await res.json()) as Listing).error).toContain("Missing code");
   });
 
+  test("a code that is not a string is refused, not a crash", async () => {
+    enable(false, true);
+    const res = await post("/api/compat/4get/install", { code: 12 });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as Listing).error).toContain("Missing code");
+  });
+
   test("an unknown scraper is refused", async () => {
     enable(false, true);
     const res = await post("/api/compat/4get/install", { code: "not-a-scraper" });

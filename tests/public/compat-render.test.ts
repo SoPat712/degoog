@@ -82,4 +82,37 @@ describe("compatibility layer catalogue rendering", () => {
     const update = compatListHtml([makeItem({ installed: true })], "SearX");
     expect(update).toContain("settings-page.extensions.compat-update|SearX");
   });
+
+  test("quotes in catalogue values cannot escape an attribute", () => {
+    const html = compatListHtml(
+      [makeItem({ code: '" onerror="boom', name: "Ansa", site: undefined })],
+      "4get",
+    );
+    expect(html).not.toContain('onerror="boom');
+    expect(html).toContain("&quot; onerror=&quot;boom");
+  });
+});
+
+describe("the compatibility layer modal body", () => {
+  test("only the newest layer handles a click on the shared modal body", async () => {
+    const { bindCompatClicks } = await import(
+      "../../src/client/settings/engines/compat-clicks"
+    );
+    const handlers: ((event: MouseEvent) => void)[] = [];
+    const body = {
+      addEventListener: (_type: "click", handler: (event: MouseEvent) => void) => {
+        handlers.push(handler);
+      },
+      removeEventListener: (_type: "click", handler: (event: MouseEvent) => void) => {
+        const at = handlers.indexOf(handler);
+        if (at !== -1) handlers.splice(at, 1);
+      },
+    };
+    const seen: string[] = [];
+    bindCompatClicks(body, () => seen.push("searx"));
+    bindCompatClicks(body, () => seen.push("4get"));
+    expect(handlers.length).toBe(1);
+    for (const handler of handlers) handler({} as MouseEvent);
+    expect(seen).toEqual(["4get"]);
+  });
 });

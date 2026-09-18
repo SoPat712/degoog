@@ -1,3 +1,7 @@
+import { logger } from "../../../utils/logger";
+
+const NS = "4get-compat";
+
 export interface FourGetPage {
   type: string;
   method: string;
@@ -31,7 +35,19 @@ export const mapPages = (
     : [];
   const out = new Map<string, FourGetPage>();
   pages.forEach((page, index) => {
-    out.set(renamed[index] ?? page.type, page);
+    const rename = renamed[index];
+    if (rename) out.set(rename, page);
+  });
+  pages.forEach((page, index) => {
+    if (renamed[index]) return;
+    if (out.has(page.type)) {
+      logger.warn(
+        NS,
+        `the ${page.method} page has no tab left, an override already renamed another page to "${page.type}"`,
+      );
+      return;
+    }
+    out.set(page.type, page);
   });
   return out;
 };

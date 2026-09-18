@@ -448,24 +448,27 @@ function apcu_delete($key){
 }
 
 /*
-	two of these processes can be mid flight at once, and if both started their
-	counter at 1 they would mint the same requestid and hand each other's page
-	back. unknown keys start somewhere random so that can't happen.
+	two of these processes can be mid flight at once, and a shared counter read
+	then written is exactly how they would both mint the same requestid and hand
+	each other's page back. every counter is local to this process and starts
+	somewhere random, so no two processes ever walk the same sequence. nothing
+	reads these keys back, they only need to be unique.
 */
 function apcu_inc($key, $step = 1, &$success = null, $ttl = 0){
 
-	$current = apcu_fetch($key, $found);
+	static $counters = [];
 
-	if($found !== true || !is_numeric($current)){
+	$name = (string)$key;
 
-		$current = random_int(1, 2147483647);
+	if(!isset($counters[$name])){
+
+		$counters[$name] = random_int(1, 2147483647);
 	}
 
-	$next = (int)$current + (int)$step;
-	apcu_store($key, $next, $ttl > 0 ? $ttl : APCU_TTL_DEFAULT);
+	$counters[$name] += (int)$step;
 
 	$success = true;
-	return $next;
+	return $counters[$name];
 }
 
 function apcu_dec($key, $step = 1, &$success = null, $ttl = 0){

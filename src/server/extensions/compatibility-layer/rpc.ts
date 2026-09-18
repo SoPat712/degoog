@@ -113,6 +113,15 @@ const _serve = async (
   }
 };
 
+const _asMessage = (line: string, label: string): RpcMessage | null => {
+  try {
+    return JSON.parse(line) as RpcMessage;
+  } catch {
+    logger.debug(label, "runner wrote something that is not json on stdout");
+    return null;
+  }
+};
+
 export const runBridge = async <T>(
   spec: RunnerSpec,
   scriptPath: string,
@@ -129,6 +138,7 @@ export const runBridge = async <T>(
   const stderrPromise = new Response(proc.stderr).text();
   let envelope: RpcEnvelope<T> | null = null;
   let lastLine = "";
+  let garbled = false;
   try {
     proc.stdin.write(`${JSON.stringify(payload)}\n`);
     proc.stdin.flush();
@@ -137,23 +147,28 @@ export const runBridge = async <T>(
     for await (const chunk of proc.stdout as unknown as AsyncIterable<Uint8Array>) {
       buffer += decoder.decode(chunk, { stream: true });
       let cut = buffer.indexOf("\n");
-      while (cut !== -1) {
+      while (cut !== -1 && !garbled) {
         const line = buffer.slice(0, cut).trim();
         buffer = buffer.slice(cut + 1);
         if (line) {
           lastLine = line;
-          const msg = JSON.parse(line) as RpcMessage;
-          if (msg.rpc) await _serve(msg, handlers, proc.stdin, spec.label);
+          const msg = _asMessage(line, spec.label);
+          if (!msg) garbled = true;
+          else if (msg.rpc) await _serve(msg, handlers, proc.stdin, spec.label);
           else envelope = msg as unknown as RpcEnvelope<T>;
         }
         cut = buffer.indexOf("\n");
       }
+      if (garbled) break;
     }
     const tail = buffer.trim();
-    if (tail) {
+    if (tail && !garbled) {
       lastLine = tail;
-      envelope = JSON.parse(tail) as RpcEnvelope<T>;
+      const msg = _asMessage(tail, spec.label);
+      if (!msg) garbled = true;
+      else envelope = msg as unknown as RpcEnvelope<T>;
     }
+    if (garbled) envelope = null;
   } catch (err) {
     proc.kill();
     throw err;

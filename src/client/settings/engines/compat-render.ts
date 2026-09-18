@@ -1,4 +1,4 @@
-import { escapeHtml } from "../../utils/dom";
+import { escapeAttribute, escapeHtml } from "../../utils/dom";
 import { typeLabel } from "./type-label";
 import type {
   CompatCatalogGroup,
@@ -63,16 +63,16 @@ const _host = (site: string | undefined): string => {
 };
 
 const _icon = (item: CompatCatalogItem): string => {
-  const letter = escapeHtml((item.name[0] ?? "?").toUpperCase());
+  const letter = (item.name[0] ?? "?").toUpperCase();
   const host = _host(item.site);
   if (!host) {
-    return `<span class="degoog-result--favicon result-favicon-fallback" aria-hidden="true">${letter}</span>`;
+    return `<span class="degoog-result--favicon result-favicon-fallback" aria-hidden="true">${escapeHtml(letter)}</span>`;
   }
-  return `<img class="degoog-result--favicon compat-favicon" alt="" loading="lazy" data-favicon-host="${escapeHtml(host)}" data-favicon-letter="${letter}">`;
+  return `<img class="degoog-result--favicon compat-favicon" alt="" loading="lazy" data-favicon-host="${escapeAttribute(host)}" data-favicon-letter="${escapeAttribute(letter)}">`;
 };
 
 const _missingDot = (layer: string): string =>
-  `<span class="ext-needs-config-badge" data-tooltip="${escapeHtml(_copy("compat-missing", layer))}" data-tooltip-below data-tooltip-end></span>`;
+  `<span class="ext-needs-config-badge" data-tooltip="${escapeAttribute(_copy("compat-missing", layer))}" data-tooltip-below data-tooltip-end></span>`;
 
 const _metaRow = (
   label: string,
@@ -81,7 +81,7 @@ const _metaRow = (
   layer: string,
   missing = false,
 ): string => `
-  <span class="ext-card-desc"><strong class="compat-meta-key" data-tooltip="${escapeHtml(hint)}" data-tooltip-below data-tooltip-start>${escapeHtml(label)}</strong>: ${escapeHtml(value)}${missing ? _missingDot(layer) : ""}</span>`;
+  <span class="ext-card-desc"><strong class="compat-meta-key" data-tooltip="${escapeAttribute(hint)}" data-tooltip-below data-tooltip-start>${escapeHtml(label)}</strong>: ${escapeHtml(value)}${missing ? _missingDot(layer) : ""}</span>`;
 
 const _typesRow = (item: CompatCatalogItem, layer: string): string => {
   const primary = (item.types[0] ?? WEB_TYPE).toLowerCase();
@@ -132,19 +132,19 @@ const _notesRow = (item: CompatCatalogItem, layer: string): string => {
 const _updateBtn = (item: CompatCatalogItem, layer: string): string => {
   if (!item.installed) return "";
   const label = _copy("compat-update", layer);
-  return `<button class="degoog-icon-btn degoog-icon-btn--padded compat-btn-update" type="button" data-code="${escapeHtml(item.code)}" data-tooltip="${escapeHtml(label)}" data-tooltip-below data-tooltip-end aria-label="${escapeHtml(label)}"><i class="fa-solid fa-arrows-rotate"></i></button>`;
+  return `<button class="degoog-icon-btn degoog-icon-btn--padded compat-btn-update" type="button" data-code="${escapeAttribute(item.code)}" data-tooltip="${escapeAttribute(label)}" data-tooltip-below data-tooltip-end aria-label="${escapeAttribute(label)}"><i class="fa-solid fa-arrows-rotate"></i></button>`;
 };
 
 const _card = (item: CompatCatalogItem, layer: string): string => {
   const action = item.installed
-    ? `<button class="btn btn--secondary degoog-btn degoog-btn--secondary degoog-btn--block compat-btn-uninstall" type="button" data-code="${escapeHtml(item.code)}">${escapeHtml(_copy("compat-uninstall", layer))}</button>`
-    : `<button class="btn btn--primary degoog-btn degoog-btn--primary degoog-btn--block compat-btn-install" type="button" data-code="${escapeHtml(item.code)}">${escapeHtml(_copy("compat-install", layer))}</button>`;
+    ? `<button class="btn btn--secondary degoog-btn degoog-btn--secondary degoog-btn--block compat-btn-uninstall" type="button" data-code="${escapeAttribute(item.code)}">${escapeHtml(_copy("compat-uninstall", layer))}</button>`
+    : `<button class="btn btn--primary degoog-btn degoog-btn--primary degoog-btn--block compat-btn-install" type="button" data-code="${escapeAttribute(item.code)}">${escapeHtml(_copy("compat-install", layer))}</button>`;
   const installed = item.installed
-    ? `<span class="ext-configured-badge" data-tooltip="${escapeHtml(_copy("compat-installed", layer))}" data-tooltip-below data-tooltip-end></span>`
+    ? `<span class="ext-configured-badge" data-tooltip="${escapeAttribute(_copy("compat-installed", layer))}" data-tooltip-below data-tooltip-end></span>`
     : "";
   const meta = `${_typesRow(item, layer)}${_runtimeRow(item, layer)}${_sharedRow(item, layer)}${_notesRow(item, layer)}`;
   return `
-    <div class="col-12 col-sm-6 col-md-4 ext-card degoog-panel degoog-panel--ext-card degoog-panel--in-modal degoog-vstack degoog-vstack--lg degoog-vstack--fill" data-code="${escapeHtml(item.code)}">
+    <div class="col-12 col-sm-6 col-md-4 ext-card degoog-panel degoog-panel--ext-card degoog-panel--in-modal degoog-vstack degoog-vstack--lg degoog-vstack--fill" data-code="${escapeAttribute(item.code)}">
       <div class="ext-card-main">
         <div class="ext-card-info">
           <div class="ext-card-name-row">
@@ -178,6 +178,6 @@ export const compatListHtml = (
 };
 
 export const compatShellHtml = (layer: string): string => `
-  <input type="text" class="store-search-input degoog-search-bar degoog-search-bar--square-advanced" id="compat-search-input" placeholder="${escapeHtml(_copy("compat-search", layer))}" autocomplete="off">
+  <input type="text" class="store-search-input degoog-search-bar degoog-search-bar--square-advanced" id="compat-search-input" placeholder="${escapeAttribute(_copy("compat-search", layer))}" autocomplete="off">
   <div class="ext-modal-status compat-status" id="compat-status" role="status"></div>
   <div id="compat-list"></div>`;

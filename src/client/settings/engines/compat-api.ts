@@ -3,6 +3,11 @@ import { getBase } from "../../utils/base-url";
 import { getStoredToken } from "../../utils/settings-token";
 import type { CompatCatalogItem } from "../../types/compat-catalog";
 import {
+  compatErrorText,
+  compatFlagOn,
+  parseCompatCatalogue,
+} from "./compat-parse";
+import {
   CompatAction,
   CompatLayerId,
   compatApiUrl,
@@ -35,11 +40,8 @@ export const enabledLayers = async (): Promise<CompatLayerView[]> => {
       headers: authHeaders(getStoredToken),
     });
     if (!res.ok) return [];
-    const data = (await res.json()) as Record<string, boolean | string>;
-    return COMPAT_LAYER_VIEWS.filter((layer) => {
-      const value = data[layer.settingKey];
-      return value === true || value === "true";
-    });
+    const data: unknown = await res.json();
+    return COMPAT_LAYER_VIEWS.filter((layer) => compatFlagOn(data, layer.settingKey));
   } catch (err) {
     console.warn("[settings] compatibility layer flags load failed", err);
     return [];
@@ -53,8 +55,7 @@ export const fetchCompat = async (
     headers: authHeaders(getStoredToken),
   });
   if (!res.ok) throw new Error(`Failed to load the ${layer} catalogue`);
-  const data = (await res.json()) as { engines?: CompatCatalogItem[] };
-  return data.engines ?? [];
+  return parseCompatCatalogue(await res.json());
 };
 
 export const sendCompat = async (
@@ -68,7 +69,7 @@ export const sendCompat = async (
     body: JSON.stringify({ code }),
   });
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error || `${layer} ${action} failed`);
+    const data: unknown = await res.json().catch(() => ({}));
+    throw new Error(compatErrorText(data, `${layer} ${action} failed`));
   }
 };

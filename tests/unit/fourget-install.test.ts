@@ -80,6 +80,7 @@ describe("4get catalogue", () => {
   });
 
   test("unknown codes are rejected unless the env var lets them through", () => {
+    const saved = process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS;
     expect(isKnownScraper("ddg")).toBe(true);
     expect(isKnownScraper("definitely-not-real")).toBe(false);
     process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS = "definitely-not-real, spare";
@@ -87,7 +88,21 @@ describe("4get catalogue", () => {
       expect(isKnownScraper("definitely-not-real")).toBe(true);
       expect(isKnownScraper("spare")).toBe(true);
     } finally {
-      delete process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS;
+      if (saved === undefined) delete process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS;
+      else process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS = saved;
+    }
+  });
+
+  test("the env var cannot smuggle a path out of the scraper directory", () => {
+    const saved = process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS;
+    process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS = "../../../etc/passwd, ../ddg, a/b";
+    try {
+      expect(isKnownScraper("../../../etc/passwd")).toBe(false);
+      expect(isKnownScraper("../ddg")).toBe(false);
+      expect(isKnownScraper("a/b")).toBe(false);
+    } finally {
+      if (saved === undefined) delete process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS;
+      else process.env.DEGOOG_FOURGET_EXTRA_SCRAPERS = saved;
     }
   });
 

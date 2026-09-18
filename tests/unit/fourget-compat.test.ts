@@ -4,6 +4,10 @@ import {
   mapPages,
 } from "../../src/server/extensions/compatibility-layer/fourget/pages";
 import {
+  nptKey,
+  type NptScope,
+} from "../../src/server/extensions/compatibility-layer/fourget/npt-key";
+import {
   FOURGET_OPT_PREFIX,
   isDriven,
   optionFields,
@@ -75,6 +79,51 @@ describe("4get page mapping", () => {
   test("whitespace and empty entries in an override are ignored", () => {
     const map = mapPages(FOURGET_PAGES.slice(0, 2), " web , pictures ,, ");
     expect(map.get("pictures")?.method).toBe("image");
+  });
+
+  test("a rename onto a name a later page still wants keeps the rename", () => {
+    const map = mapPages(FOURGET_PAGES.slice(0, 2), "images");
+    expect(map.get("images")?.method).toBe("web");
+    expect(map.size).toBe(1);
+  });
+});
+
+describe("4get next page tokens", () => {
+  const base: NptScope = {
+    query: "cats",
+    page: 2,
+    nsfw: "maybe",
+    timeFilter: "any",
+    overrides: {},
+  };
+
+  test("the same search asks for the same token", () => {
+    expect(nptKey(base)).toBe(nptKey({ ...base, overrides: {} }));
+    expect(nptKey({ ...base, overrides: { country: "fr", size: "large" } })).toBe(
+      nptKey({ ...base, overrides: { size: "large", country: "fr" } }),
+    );
+  });
+
+  test("safe search, time filter and engine options each split the token", () => {
+    const keys = new Set([
+      nptKey(base),
+      nptKey({ ...base, nsfw: "no" }),
+      nptKey({ ...base, timeFilter: "week" }),
+      nptKey({ ...base, overrides: { country: "fr" } }),
+      nptKey({ ...base, query: "dogs" }),
+      nptKey({ ...base, page: 3 }),
+    ]);
+    expect(keys.size).toBe(6);
+  });
+
+  test("a custom range splits by its own dates, a relative one does not drift", () => {
+    const custom: NptScope = { ...base, timeFilter: "custom" };
+    expect(nptKey({ ...custom, dateFrom: "2026-01-01" })).not.toBe(
+      nptKey({ ...custom, dateFrom: "2026-06-01" }),
+    );
+    expect(nptKey({ ...base, timeFilter: "day", dateFrom: "2026-01-01" })).toBe(
+      nptKey({ ...base, timeFilter: "day", dateFrom: "2026-06-01" }),
+    );
   });
 });
 
