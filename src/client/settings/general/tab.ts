@@ -8,6 +8,7 @@ import {
   STICKY_SIDEBAR,
   CENTERED_MODE,
   HIDE_URL_PARAMS,
+  SHOW_RESULT_DATES,
   THEME_KEY,
 } from "../../constants";
 import { idbGet, idbSet } from "../../utils/db";
@@ -67,6 +68,12 @@ const SEARCH_OPTION_TOGGLES: ToggleOpts[] = [
     id: "settings-hide-url-params",
     labelKey: "settings-page.search-options.hide-url-params",
     ariaKey: "settings-page.search-options.hide-url-params-aria",
+  },
+  {
+    id: "settings-show-result-dates",
+    labelKey: "settings-page.search-options.show-result-dates",
+    ariaKey: "settings-page.search-options.show-result-dates-aria",
+    titleKey: "settings-page.search-options.show-result-dates-tooltip",
   },
 ];
 
@@ -241,6 +248,7 @@ const PREF_TOGGLES: { id: string; key: string; defaultVal?: boolean; invert?: bo
   { id: "settings-sticky-sidebar", key: STICKY_SIDEBAR, defaultVal: false },
   { id: "settings-centered-mode", key: CENTERED_MODE, defaultVal: false },
   { id: "settings-hide-url-params", key: HIDE_URL_PARAMS, defaultVal: false },
+  { id: "settings-show-result-dates", key: SHOW_RESULT_DATES, defaultVal: true },
 ];
 
 export async function initAppearanceSettings(): Promise<void> {

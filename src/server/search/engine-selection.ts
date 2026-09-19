@@ -1,6 +1,8 @@
 import {
+  engineFullSchema,
   getActiveWebEngines,
   getEngineMap,
+  getEngineSettingsView,
   getEnginesForCustomType,
 } from "../extensions/engines/registry";
 import type { EngineConfig, ImageFilter, SearchEngine } from "../types";
@@ -38,7 +40,8 @@ const _stableSettings = (settings: Record<string, unknown>): Record<string, unkn
   Object.fromEntries(Object.entries(settings).sort(([a], [b]) => a.localeCompare(b)));
 
 export const engineFingerprint = async (id: string): Promise<string> => {
-  const schema = getEngineMap()[id]?.settingsSchema ?? [];
-  const stored = maskSecrets(await getSettings(id), schema);
+  const instance = getEngineMap()[id];
+  const schema = instance ? engineFullSchema(instance) : [];
+  const stored = maskSecrets(await getEngineSettingsView(id), schema);
   return JSON.stringify(_stableSettings(stored));
 };

@@ -2,6 +2,7 @@ import {
   type EngineConfig,
   type ExtensionMeta,
   type ImageFilter,
+  type PluginManifest,
   type SearchEngine,
   type SettingField,
   type Translate,
@@ -15,7 +16,9 @@ import {
   maskSecrets,
   asBoolean,
   mergeDefaults,
+  type SettingValue,
 } from "../../utils/plugin-settings";
+import { isPluginManifest } from "../plugin-manifest";
 import { bootCircuitFromPath } from "../../utils/translation-circuit";
 import { transportPicks } from "../transports/registry";
 import { enginesDir, defaultEnginesFile } from "../../utils/paths";
@@ -69,14 +72,120 @@ interface PluginEntry {
   source?: RegistrySource;
   compatibilityLayer?: string;
   filters?: EngineFilters;
+  pluginManifest?: PluginManifest;
 }
+
+type AnyEngineEntry = PluginEntry | CompatEntry;
 
 let _compatEntries: CompatEntry[] = [];
 
-const allEngineEntries = (): (PluginEntry | CompatEntry)[] => [
+const allEngineEntries = (): AnyEngineEntry[] => [
   ...engineRegistry.items(),
   ..._compatEntries,
 ];
+
+const manifestOf = (entry: AnyEngineEntry): PluginManifest | undefined =>
+  entry.instance.pluginManifest;
+
+const manifestKeys = (entry: AnyEngineEntry): Set<string> =>
+  new Set((manifestOf(entry)?.settingsSchema ?? []).map((f) => f.key));
+
+export const engineFullSchema = (instance: SearchEngine): SettingField[] => {
+  const own = instance.settingsSchema ?? [];
+  const shared = (instance.pluginManifest?.settingsSchema ?? []).filter(
+    (f) => !own.some((o) => o.key === f.key),
+  );
+  return [...own, ...shared];
+};
+
+const sharedValues = async (
+  manifest: PluginManifest,
+): Promise<Record<string, SettingValue>> => {
+  const shared = await getSettings(manifest.id);
+  const picked: Record<string, SettingValue> = {};
+  for (const field of manifest.settingsSchema ?? []) {
+    if (field.key in shared) picked[field.key] = shared[field.key];
+  }
+  return picked;
+};
+
+const mergedSettings = async (
+  entry: AnyEngineEntry,
+): Promise<Record<string, SettingValue>> => {
+  const own = await getSettings(entry.id);
+  const manifest = manifestOf(entry);
+  if (!manifest) return own;
+  return { ...own, ...(await sharedValues(manifest)) };
+};
+
+export const getEngineSettingsView = async (
+  engineId: string,
+): Promise<Record<string, SettingValue>> => {
+  const entry = allEngineEntries().find((e) => e.id === engineId);
+  return entry ? mergedSettings(entry) : getSettings(engineId);
+};
+
+const configureEngine = async (entry: AnyEngineEntry): Promise<void> => {
+  const { instance } = entry;
+  const schema = engineFullSchema(instance);
+  if (!instance.configure || schema.length === 0) return;
+  instance.configure(mergeDefaults(await mergedSettings(entry), schema));
+};
+
+export const reconfigureManifestEngines = async (
+  settingsId: string,
+): Promise<void> => {
+  for (const entry of allEngineEntries()) {
+    const manifest = manifestOf(entry);
+    if (!manifest) continue;
+    if (manifest.id !== settingsId && entry.id !== settingsId) continue;
+    try {
+      await configureEngine(entry);
+    } catch (err) {
+      logger.error(
+        "engines",
+        `failed to reconfigure ${entry.id} from ${settingsId}`,
+        err,
+      );
+    }
+  }
+};
+
+export const getEngineByManifestId = (
+  manifestId: string,
+): SearchEngine | null =>
+  allEngineEntries().find((e) => manifestOf(e)?.id === manifestId)?.instance ??
+  null;
+
+export const manifestEngineSchema = (manifestId: string): SettingField[] => {
+  const seen = new Set<string>();
+  const out: SettingField[] = [];
+  for (const entry of allEngineEntries()) {
+    const manifest = manifestOf(entry);
+    if (manifest?.id !== manifestId) continue;
+    for (const field of manifest.settingsSchema ?? []) {
+      if (seen.has(field.key)) continue;
+      seen.add(field.key);
+      out.push(field);
+    }
+  }
+  return out;
+};
+
+const _manifestClaims = new Map<string, string>();
+
+const trackManifestId = (entry: PluginEntry): void => {
+  const manifest = manifestOf(entry);
+  if (!manifest) return;
+  const claimed = _manifestClaims.get(manifest.id);
+  if (claimed && claimed !== entry.id) {
+    logger.warn(
+      "engines",
+      `manifest id ${manifest.id} is claimed by both ${claimed} and ${entry.id}`,
+    );
+  }
+  _manifestClaims.set(manifest.id, entry.id);
+};
 
 const resolveTypes = (
   baseTypes: string[],
@@ -197,9 +306,11 @@ const engineRegistry = createRegistry<PluginEntry>({
       ? (mod.type as TypeFn)
       : undefined;
     const declared = isFn ? [] : _coerceTypeList(mod.type);
+    if (isPluginManifest(mod.plugin)) instance.pluginManifest = mod.plugin;
     return {
       id: "",
       displayName: instance.name,
+      pluginManifest: instance.pluginManifest,
       searchTypes: declared.length > 0 ? declared : isFn ? [] : ["web"],
       description:
         typeof mod.description === "string" ? mod.description : undefined,
@@ -211,12 +322,8 @@ const engineRegistry = createRegistry<PluginEntry>({
     entry.id = canonicalId ?? `${folderName}-engine`;
     entry.source = source;
     entry.instance.t = await bootCircuitFromPath(entryPath);
-    if (entry.instance.configure && entry.instance.settingsSchema?.length) {
-      const stored = await getSettings(entry.id);
-      entry.instance.configure(
-        mergeDefaults(stored, entry.instance.settingsSchema),
-      );
-    }
+    trackManifestId(entry);
+    await configureEngine(entry);
   },
   allowFlatFiles: true,
   debugTag: "engines",
@@ -311,19 +418,15 @@ export const getEngineSearchType = async (
   return resolveTabSearchType(types, preferredTab);
 };
 
-const engineRequiresConfig = (engine: SearchEngine): boolean => {
-  const schema = engine.settingsSchema ?? [];
-  return schema.some((f) => f.required === true);
-};
+const engineRequiresConfig = (engine: SearchEngine): boolean =>
+  engineFullSchema(engine).some((f) => f.required === true);
 
-const hasRequiredConfig = async (
-  engineId: string,
-  instance: SearchEngine,
-): Promise<boolean> => {
-  const schema = instance.settingsSchema ?? [];
-  const requiredKeys = schema.filter((f) => f.required).map((f) => f.key);
+const hasRequiredConfig = async (entry: AnyEngineEntry): Promise<boolean> => {
+  const requiredKeys = engineFullSchema(entry.instance)
+    .filter((f) => f.required)
+    .map((f) => f.key);
   if (requiredKeys.length === 0) return true;
-  const stored = await getSettings(engineId);
+  const stored = await mergedSettings(entry);
   return requiredKeys.every((k) => {
     const v = stored[k];
     if (Array.isArray(v)) return v.length > 0;
@@ -342,10 +445,7 @@ export const getActiveWebEngines = async (
     if (!enabled) continue;
     const types = await resolveEngineTypes(e);
     if (!types.includes("web")) continue;
-    if (
-      engineRequiresConfig(e.instance) &&
-      !(await hasRequiredConfig(e.id, e.instance))
-    )
+    if (engineRequiresConfig(e.instance) && !(await hasRequiredConfig(e)))
       continue;
     const stored = await getSettings(e.id);
     const score = Math.max(parseFloat(asString(stored["score"])) || 1, 0.1);
@@ -539,11 +639,13 @@ export const getEngineExtensionMeta = async (
       : baseScoreField;
 
     const pluginT = entry.instance.t;
+    const sharedKeys = manifestKeys(entry);
     const engineSchemaFiltered = engineSchema.filter(
       (f) =>
         f.key !== "outgoingTransport" &&
         f.key !== "score" &&
-        f.key !== "searchTypeOverride",
+        f.key !== "searchTypeOverride" &&
+        !sharedKeys.has(f.key),
     );
     const translatedEngineSchema = pluginT
       ? engineSchemaFiltered.map((field) => {
@@ -622,6 +724,7 @@ export const getEngineExtensionMeta = async (
 
 export const initEngines = async (bust = false): Promise<void> => {
   clearTypeCache();
+  _manifestClaims.clear();
   await (bust ? engineRegistry.reload() : engineRegistry.init());
   _compatEntries = await loadCompatEngines();
 };

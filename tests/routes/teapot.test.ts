@@ -20,6 +20,8 @@ describe("HTCPCP", () => {
   test("I'm a teapot", async () => {
     const res = await pour();
     expect(res.status).toBe(418);
+    expect(res.headers.get("HTCPCP")).toBe("1.0");
+    expect(res.headers.get("Content-Type")).toContain("message/teapot");
     expect(await res.text()).toBe("I'm a teapot");
   });
 
@@ -30,20 +32,34 @@ describe("HTCPCP", () => {
       body: "start",
     });
     expect(res.status).toBe(418);
+    expect(res.headers.get("HTCPCP")).toBe("1.0");
   });
 
-  test("neither will darjeeling", async () => {
+  test("tea gets a menu, not a mug", async () => {
+    const res = await pour("/teapot", {
+      method: "POST",
+      headers: { "Content-Type": "message/teapot" },
+      body: "start",
+    });
+    expect(res.status).toBe(300);
+    expect(res.headers.get("HTCPCP-TEA")).toBe("1.0");
+    expect(res.headers.get("Alternates") ?? "").toContain("/teapot/darjeeling");
+  });
+
+  test("darjeeling is a vibe", async () => {
     const res = await pour("/teapot/darjeeling", {
       method: "POST",
       headers: { "Content-Type": "message/teapot" },
       body: "start",
     });
-    expect(res.status).toBe(418);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("start");
   });
 
   test("browsers get a page, still a teapot", async () => {
     const res = await pour("/teapot", { headers: { Accept: "text/html" } });
     expect(res.status).toBe(418);
     expect(res.headers.get("Content-Type")).toContain("text/html");
+    expect(res.headers.get("HTCPCP")).toBe("1.0");
   });
 });

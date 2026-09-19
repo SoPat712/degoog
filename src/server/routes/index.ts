@@ -34,7 +34,6 @@ import themes from "./themes";
 const globalRouter = new Hono();
 
 globalRouter.route("/", health);
-globalRouter.route("/", teapot);
 
 // TODO Consider using a more structured approach for the routes
 // e.g. globalRouter.route("/", commands); becomes globalRouter.route("/commands/", commands);
@@ -65,6 +64,7 @@ globalRouter.route("/", uovadipasqua);
 globalRouter.route("/", extensions);
 globalRouter.route("/", indexer);
 globalRouter.route("/", pages);
+globalRouter.route("/", teapot);
 globalRouter.route("/", pluginAssets);
 globalRouter.route("/", pluginRoutes);
 globalRouter.route("/", proxy);

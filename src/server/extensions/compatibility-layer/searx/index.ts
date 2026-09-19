@@ -21,7 +21,7 @@ import {
 import { getInstanceSettings } from "../../../utils/server-settings";
 import { runPython, type RpcFetchReply, type RpcHandlers } from "./rpc";
 import { scrubLog } from "../scrub-log";
-import { isSupportFile, isSupportedEngine } from "./catalog";
+import { isSupportFile, isSupportedEngine, SEARX_EXTRA_ENGINES_ENV } from "./catalog";
 import {
   optionFields,
   overridesFrom,
@@ -408,7 +408,8 @@ export const loadSearxCompatibilityEngines = async (): Promise<SearxCompatEntry[
     return [];
   }
   const entries: SearxCompatEntry[] = [];
-  const excluded: string[] = [];
+  const offline: string[] = [];
+  const unlisted: string[] = [];
   const broken: string[] = [];
   for (const meta of discovered) {
     const file = basename(meta.path ?? "", ".py");
@@ -417,8 +418,12 @@ export const loadSearxCompatibilityEngines = async (): Promise<SearxCompatEntry[
       broken.push(`${code} (${meta.error})`);
       continue;
     }
-    if (meta.offline || !isSupportedEngine(code)) {
-      excluded.push(code);
+    if (meta.offline) {
+      offline.push(code);
+      continue;
+    }
+    if (!isSupportedEngine(code)) {
+      unlisted.push(code);
       continue;
     }
     const rawId = code;
@@ -447,8 +452,14 @@ export const loadSearxCompatibilityEngines = async (): Promise<SearxCompatEntry[
     });
   }
   logger.info(NS, `SearX compatibility layer imported - ${entries.length} engine(s) available`);
-  if (excluded.length > 0) {
-    logger.info(NS, `known excluded engines (${excluded.length}): ${excluded.sort().join(", ")}`);
+  if (offline.length > 0) {
+    logger.info(NS, `offline engines skipped (${offline.length}): ${offline.sort().join(", ")}`);
+  }
+  if (unlisted.length > 0) {
+    logger.info(
+      NS,
+      `not on the tested compatibility list (${unlisted.length}): ${unlisted.sort().join(", ")} - set ${SEARX_EXTRA_ENGINES_ENV} to load them anyway, they may still not work`,
+    );
   }
   if (broken.length > 0) {
     logger.warn(NS, `engines that failed to load (${broken.length}): ${broken.sort().join(", ")}`);

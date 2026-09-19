@@ -28,6 +28,7 @@ export interface AppState {
   inlineGifPlayback: boolean;
   stickySidebar: boolean;
   hideUrlParams: boolean;
+  showResultDates: boolean;
   isInitialLoad: boolean;
   imageFilter: ImageFilter;
 }

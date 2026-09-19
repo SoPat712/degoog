@@ -8,6 +8,7 @@ export const INLINE_GIF_PLAYBACK = "inline_gif_playback";
 export const STICKY_SIDEBAR = "sticky_sidebar";
 export const CENTERED_MODE = "centered_mode";
 export const HIDE_URL_PARAMS = "hide_url_params";
+export const SHOW_RESULT_DATES = "show_result_dates";
 export const TAB_ORDER_SAVED = "tab-order-saved";
 
 export const GENERAL_SYNC_KEYS = [
@@ -20,6 +21,7 @@ export const GENERAL_SYNC_KEYS = [
   STICKY_SIDEBAR,
   CENTERED_MODE,
   HIDE_URL_PARAMS,
+  SHOW_RESULT_DATES,
 ] as const;
 
 export const ENGINE_SYNC_KEYS = [ENGINES_KEY] as const;

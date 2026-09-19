@@ -62,6 +62,7 @@ export const buildResultContext = (
     url: linkHref(r.url),
     cite_url: cleanUrl(r.url),
     snippet: r.snippet,
+    published_at: _dateLabel(r.publishedAt),
     favicon_url: faviconUrl(r.url),
     favicon_host: faviconHostname(r.url),
     thumbnail_url: r.thumbnail || "",
@@ -76,6 +77,23 @@ export const buildResultContext = (
     action_replace: showReplace,
     action_score: showScore,
   };
+};
+
+const _dateLabel = (iso?: string): string => {
+  if (!iso || !state.showResultDates) return "";
+  const when = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(when.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(when);
+  } catch (err) {
+    console.debug("[render] could not format result date", err);
+    return iso;
+  }
 };
 
 const _hydrateFavicons = (container: HTMLElement): void => {

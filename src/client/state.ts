@@ -29,6 +29,7 @@ export const state: AppState = {
   inlineGifPlayback: true,
   stickySidebar: false,
   hideUrlParams: false,
+  showResultDates: true,
   isInitialLoad: false,
   imageFilter: defaultImageFilter(),
 };

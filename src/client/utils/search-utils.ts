@@ -5,6 +5,7 @@ import { SlotPanelPosition, type ScoredResult, type SlotPanel } from "../types";
 import { escapeHtml } from "./dom";
 import { isImageSearchType } from "./engines";
 import { runScriptsInContainer } from "./search-helpers";
+import { skeletonGlance } from "../animations/skeleton";
 
 let glanceAbortController: AbortController | null = null;
 let slotsAbortController: AbortController | null = null;
@@ -101,10 +102,19 @@ export async function fetchGlancePanels(
       signal,
     });
     if (signal.aborted) return;
-    const data = (await res.json()) as { panels?: SlotPanel[] };
+    const data = (await res.json()) as {
+      panels?: SlotPanel[];
+      pending?: boolean;
+    };
     if (signal.aborted) return;
     if (_skipSlotPanels(state.currentType)) return;
-    _renderGlanceHtml(data.panels ?? [], results !== undefined);
+    const panels = data.panels ?? [];
+    if (results === undefined && panels.length === 0 && data.pending) {
+      const glanceEl = document.getElementById("at-a-glance");
+      if (glanceEl) glanceEl.innerHTML = skeletonGlance();
+      return;
+    }
+    _renderGlanceHtml(panels, results !== undefined);
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") return;
     const glanceEl = document.getElementById("at-a-glance");

@@ -1,5 +1,9 @@
 import { getCoreTranslator } from "../routes/pages";
-import { getEngineExtensionMeta, getEngineMap } from "./engines/registry";
+import {
+  getEngineByManifestId,
+  getEngineExtensionMeta,
+  getEngineMap,
+} from "./engines/registry";
 import {
   getPluginExtensionMeta,
   getCommandInstanceById,
@@ -92,7 +96,7 @@ const findTabBySettingsId = (id: string): SearchResultTab | null => {
 };
 
 export const resolveExtension = (id: string): ResolvedExtension => ({
-  engine: getEngineMap()[id] ?? null,
+  engine: getEngineMap()[id] ?? getEngineByManifestId(id),
   command: getCommandInstanceById(id) ?? null,
   slot: findSlotBySettingsId(id),
   interceptor: getInterceptorBySettingsId(id),

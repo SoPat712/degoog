@@ -9,6 +9,7 @@ export {
   STICKY_SIDEBAR,
   CENTERED_MODE,
   HIDE_URL_PARAMS,
+  SHOW_RESULT_DATES,
   TAB_ORDER_SAVED,
 } from "../shared/sync";
 

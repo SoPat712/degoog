@@ -12,7 +12,6 @@ import { logger } from "../../../../utils/logger";
 const WIKI_NAMESPACE = "ext:wikipedia:page";
 const WIKI_TTL_MS = 60 * 60 * 1000;
 
-const WIKI_SETTINGS_ID = "wikipedia-slot";
 const DEFAULT_WIKI_DOMAIN = "en.wikipedia.org";
 const WIKI_DOMAIN_PATTERN = /^[a-z0-9-]+\.wikipedia\.org$/;
 
@@ -25,8 +24,8 @@ export const toWikiDomain = (raw: unknown): string => {
   return WIKI_DOMAIN_PATTERN.test(cleaned) ? cleaned : DEFAULT_WIKI_DOMAIN;
 };
 
-const _wikiDomain = async (): Promise<string> => {
-  const stored = await getSettings(WIKI_SETTINGS_ID);
+const _wikiDomain = async (settingsId: string): Promise<string> => {
+  const stored = await getSettings(settingsId);
   return toWikiDomain(stored["domain"]);
 };
 
@@ -202,7 +201,7 @@ const wikipediaSlot: SlotPlugin = {
   async trigger(query: string): Promise<boolean> {
     const q = query.trim();
     if (q.length < 2 || q.length > 100) return false;
-    const host = await _wikiDomain();
+    const host = await _wikiDomain(this.settingsId ?? "");
     const key = `${host}:${q.toLowerCase()}`;
     const page = await _wikiCache.get(key);
     if (page === null) {
@@ -220,7 +219,7 @@ const wikipediaSlot: SlotPlugin = {
     const sign = ctx?.signProxyUrl ?? _signProxyUrl;
     const proxy = (url: string) => (sign ? sign(url) : "");
     const q = query.trim();
-    const host = await _wikiDomain();
+    const host = await _wikiDomain(this.settingsId ?? "");
     const key = `${host}:${q.toLowerCase()}`;
     let page = await _wikiCache.get(key);
     if (page === null) {

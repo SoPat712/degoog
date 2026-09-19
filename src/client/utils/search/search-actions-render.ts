@@ -1,5 +1,4 @@
 import {
-  skeletonGlance,
   skeletonImageGrid,
   skeletonResults,
   skeletonSidebar,
@@ -98,7 +97,7 @@ export const prepareResultsUi = (query: string, resolvedType: string): void => {
     void fetchGlancePanels(query);
   }
   const glanceEl = document.getElementById("at-a-glance");
-  if (glanceEl) glanceEl.innerHTML = isImageType ? "" : skeletonGlance();
+  if (glanceEl) glanceEl.innerHTML = "";
   const resultsList = document.getElementById("results-list");
   if (resultsList) {
     resultsList.innerHTML = isImageType

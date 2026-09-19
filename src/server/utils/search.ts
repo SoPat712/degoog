@@ -10,6 +10,7 @@ import {
   SLOT_POSITION_SETTING_KEY,
   SlotPanelPosition,
   SlotPanel,
+  SlotPlugin,
   SlotPluginContext,
 } from "../types";
 import { createCache, useCache } from "./cache";
@@ -142,6 +143,18 @@ export function parseEngineConfig(query: URLSearchParams): EngineConfig {
   return config;
 }
 
+export const slotPosition = async (
+  plugin: SlotPlugin,
+  settingsId: string,
+): Promise<SlotPanelPosition> => {
+  if (!plugin.slotPositions?.length) return plugin.position;
+  const raw = await getSettings(settingsId);
+  const chosen = asString(raw[SLOT_POSITION_SETTING_KEY]);
+  return chosen && plugin.slotPositions.includes(chosen as SlotPanelPosition)
+    ? (chosen as SlotPanelPosition)
+    : plugin.position;
+};
+
 export async function runSlotPlugins(
   query: string,
   clientIp?: string,
@@ -166,18 +179,7 @@ export async function runSlotPlugins(
       continue;
     }
     const slotSettingsId = plugin.settingsId ?? `slot-${plugin.id}`;
-    let definedPosition: SlotPanelPosition = plugin.position;
-
-    if (plugin.slotPositions?.length) {
-      const raw = await getSettings(slotSettingsId);
-      const chosen = asString(raw[SLOT_POSITION_SETTING_KEY]);
-      if (
-        chosen &&
-        plugin.slotPositions.includes(chosen as SlotPanelPosition)
-      ) {
-        definedPosition = chosen as SlotPanelPosition;
-      }
-    }
+    const definedPosition = await slotPosition(plugin, slotSettingsId);
     if (exclude && definedPosition === exclude) continue;
     if (!(await slotShowsOn(plugin, slotSettingsId, searchType))) continue;
     const withResults = results !== undefined;

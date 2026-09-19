@@ -158,7 +158,7 @@ const toSearxResult = (
   score: r.score,
   positions: [index + 1],
   parsed_url: parseUrl(r.url),
-  publishedDate: null,
+  publishedDate: r.publishedAt ? `${r.publishedAt}T00:00:00+00:00` : null,
   img_src: r.imageUrl ?? "",
   thumbnail: r.thumbnail ?? "",
   iframe_src: "",

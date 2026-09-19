@@ -13,7 +13,7 @@ import { outgoingFetch } from "../utils/outgoing";
 import { isDisabled } from "../utils/plugin-settings";
 import { buildSignedProxyUrl } from "../utils/proxy-sign";
 import { getClientIp } from "../utils/request";
-import { _applyRateLimit, runSlotPlugins } from "../utils/search";
+import { _applyRateLimit, runSlotPlugins, slotPosition } from "../utils/search";
 import { slotShowsOn } from "../utils/slot-types";
 import { DEFAULT_SEARCH_TYPE } from "../../shared/search-types";
 import { applyFilter, syncVortexSignal } from "../utils/translation-circuit";
@@ -72,11 +72,9 @@ router.post("/api/slots/glance", async (c) => {
   const clientIp = getClientIp(c);
   const locale = getLocale(c);
   const searchType = _requestedType(body.type);
-  const glancePlugins = getSlotPlugins().filter(
-    (p) => p.position === SlotPanelPosition.AtAGlance,
-  );
   const panels: SlotPanel[] = [];
-  for (const plugin of glancePlugins) {
+  let pending = false;
+  for (const plugin of getSlotPlugins()) {
     if (!plugin.id) {
       logger.warn(
         "slots",
@@ -84,13 +82,18 @@ router.post("/api/slots/glance", async (c) => {
       );
       continue;
     }
-    if (!withResults && plugin.waitForResults) continue;
     try {
       const slotSettingsId = plugin.settingsId ?? `slot-${plugin.id}`;
+      const position = await slotPosition(plugin, slotSettingsId);
+      if (position !== SlotPanelPosition.AtAGlance) continue;
       if (await isDisabled(slotSettingsId)) continue;
       if (!(await slotShowsOn(plugin, slotSettingsId, searchType))) continue;
       const ok = await Promise.resolve(plugin.trigger(body.query!.trim()));
       if (!ok) continue;
+      if (!withResults && plugin.waitForResults) {
+        pending = true;
+        continue;
+      }
       const context: SlotPluginContext = {
         clientIp: clientIp ?? undefined,
         results: withResults ? body.results : undefined,
@@ -120,7 +123,7 @@ router.post("/api/slots/glance", async (c) => {
       logger.warn("plugin", `${plugin.id} slot failed`, err);
     }
   }
-  return c.json({ panels });
+  return c.json({ panels, pending });
 });
 
 export default router;

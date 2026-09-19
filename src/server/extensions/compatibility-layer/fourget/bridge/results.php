@@ -91,6 +91,25 @@ class shaper {
 		return sprintf("%d:%02d", $minutes, $secs);
 	}
 
+	private static function published(array $entry){
+
+		$raw = $entry["date"] ?? null;
+
+		if(!is_numeric($raw)){
+
+			return null;
+		}
+
+		$stamp = (int)$raw;
+
+		if($stamp <= 0){
+
+			return null;
+		}
+
+		return gmdate("Y-m-d", $stamp);
+	}
+
 	private static function page(array $entry, string $source){
 
 		$url = (string)($entry["url"] ?? "");
@@ -112,6 +131,13 @@ class shaper {
 		if($thumb !== null){
 
 			$out["thumbnail"] = $thumb;
+		}
+
+		$published = self::published($entry);
+
+		if($published !== null){
+
+			$out["publishedAt"] = $published;
 		}
 
 		return $out;

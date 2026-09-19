@@ -52,7 +52,10 @@
       "centered-mode": "Center search results",
       "centered-mode-aria": "Center search results",
       "hide-url-params": "Hide query parameters in result URLs",
-      "hide-url-params-aria": "Hide query parameters in result URLs"
+      "hide-url-params-aria": "Hide query parameters in result URLs",
+      "show-result-dates": "Show publication dates on results",
+      "show-result-dates-aria": "Show publication dates on results",
+      "show-result-dates-tooltip": "Shows the date an engine reported for a result, when it reported one. Turning this off hides the date entirely."
     },
     "sync": {
       "heading": "Instance defaults",

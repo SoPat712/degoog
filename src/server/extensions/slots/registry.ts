@@ -23,7 +23,10 @@ import { bootCircuitFromPath } from "../../utils/translation-circuit";
 import { createRegistry } from "../registry-factory";
 import { getInterceptors } from "../interceptors/registry";
 import { isPluginManifest } from "../plugin-manifest";
-import { getInstalledSearchTypes } from "../engines/registry";
+import {
+  getInstalledSearchTypes,
+  manifestEngineSchema,
+} from "../engines/registry";
 import { baseSlotTypes } from "../../utils/slot-types";
 import { parseTypeList } from "../../../shared/search-types";
 import { isExtensionRestartFlagVisible } from "../../utils/restart-state";
@@ -159,8 +162,15 @@ export const getSlotExtensionMeta = async (
           .flatMap((i) => i.settingsSchema ?? [])
       : [];
 
+    const manifestSchema = manifest?.settingsSchema ?? [];
+    const manifestKeys = new Set(manifestSchema.map((f) => f.key));
+    const linkedEngineSchema = manifest
+      ? manifestEngineSchema(manifest.id).filter((f) => !manifestKeys.has(f.key))
+      : [];
+
     const fullSchema: SettingField[] = [
-      ...(manifest?.settingsSchema ?? []),
+      ...manifestSchema,
+      ...linkedEngineSchema,
       ...baseSchema,
       ...linkedInterceptorSchema,
     ];

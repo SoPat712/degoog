@@ -45,7 +45,12 @@ import { getRandomUserAgent } from "./utils/user-agents";
 import { logger } from "./utils/logger";
 import { reportEngineRun } from "./utils/run-observers";
 import { outgoingFetch, parseOutgoingTransport } from "./utils/outgoing";
-import { stripHtml, stripCssBlocks } from "./utils/text";
+import {
+  stripHtml,
+  stripCssBlocks,
+  snippetDate,
+  isPublishDate,
+} from "./utils/text";
 import { asString, getSettings } from "./utils/plugin-settings";
 import { buildSignedProxyUrl } from "./utils/proxy-sign";
 import { cleanUrl, normalizeUrl, urlIsGif } from "./search/url-normalize";
@@ -79,6 +84,18 @@ export const getEngineTimeout = async (
   return clampTimeout(base);
 };
 
+const _readSnippet = (
+  raw: string,
+  given?: string,
+): { text: string; publishedAt?: string } => {
+  const text = stripCssBlocks(stripHtml(raw));
+  if (given && isPublishDate(given)) return { text, publishedAt: given };
+  const dated = snippetDate(text);
+  return dated
+    ? { text: dated.rest, publishedAt: dated.iso }
+    : { text };
+};
+
 const _mergeIntoMap = (
   urlMap: Map<string, ScoredResult>,
   results: SearchResult[],
@@ -96,9 +113,12 @@ const _mergeIntoMap = (
       if (!existing.sources.includes(r.source)) {
         existing.sources.push(r.source);
       }
-      const cleanSnippet = stripCssBlocks(stripHtml(r.snippet));
-      if (cleanSnippet.length > existing.snippet.length) {
-        existing.snippet = cleanSnippet;
+      const incoming = _readSnippet(r.snippet, r.publishedAt);
+      if (incoming.text.length > existing.snippet.length) {
+        existing.snippet = incoming.text;
+      }
+      if (!existing.publishedAt && incoming.publishedAt) {
+        existing.publishedAt = incoming.publishedAt;
       }
       if (r.thumbnail && !existing.thumbnail) {
         existing.thumbnail = r.thumbnail;
@@ -112,10 +132,12 @@ const _mergeIntoMap = (
       }
       if (insecure) existing.insecure = true;
     } else {
+      const fresh = _readSnippet(r.snippet, r.publishedAt);
       urlMap.set(normalized, {
         ...r,
         title: stripCssBlocks(stripHtml(r.title)),
-        snippet: stripCssBlocks(stripHtml(r.snippet)),
+        snippet: fresh.text,
+        publishedAt: fresh.publishedAt,
         url: cleanUrl(r.url),
         score: positionScore,
         sources: [r.source],

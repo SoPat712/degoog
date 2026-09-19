@@ -7,6 +7,7 @@ export interface SearchResult {
   imageUrl?: string;
   isGif?: boolean;
   duration?: string;
+  publishedAt?: string;
 }
 
 export const DEGOOG_ENGINE_NAME = "Degoog";

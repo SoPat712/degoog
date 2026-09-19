@@ -114,6 +114,7 @@ export interface SearchEngine {
   bangShortcut?: string;
   needsAppRestart?: boolean;
   settingsSchema?: SettingField[];
+  pluginManifest?: PluginManifest;
   configure?(settings: Record<string, SettingValue>): void;
   getFieldOptions?: GetFieldOptions;
   executeSearch(

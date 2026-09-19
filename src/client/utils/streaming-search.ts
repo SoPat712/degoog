@@ -1,5 +1,4 @@
 import {
-  skeletonGlance,
   skeletonImageGrid,
   skeletonResults,
   skeletonSidebar,
@@ -165,7 +164,7 @@ export async function performStreamingSearch(
     void fetchGlancePanels(query);
   }
   const glanceEl = document.getElementById("at-a-glance");
-  if (glanceEl) glanceEl.innerHTML = isImageType ? "" : skeletonGlance();
+  if (glanceEl) glanceEl.innerHTML = "";
   document.title = `${query} - degoog`;
 
   const urlParams = new URLSearchParams({ q: query });

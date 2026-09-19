@@ -21,7 +21,6 @@ import {
 import { getRandomUserAgent } from "../../../../utils/user-agents";
 import { logger } from "../../../../utils/logger";
 
-const SETTINGS_ID = "slot-at-a-glance";
 const WIKIPEDIA_SETTINGS_ID = "wikipedia-slot";
 const WIKIPEDIA_HOSTNAME = "wikipedia.org";
 
@@ -202,8 +201,8 @@ const _fetchExtract = async (
   }
 };
 
-const _loadSettings = async () => {
-  const stored = await getSettings(SETTINGS_ID);
+const _loadSettings = async (settingsId: string) => {
+  const stored = await getSettings(settingsId);
   const rawLength = parseInt(asString(stored["snippetLength"]), 10);
   const rawTimeout = parseFloat(asString(stored["fetchTimeoutSeconds"]) || "3");
   const rawParagraphs = parseInt(asString(stored["paragraphs"]) || "1", 10);
@@ -228,12 +227,17 @@ const _loadSettings = async () => {
 
 const atAGlanceSlot: SlotPlugin = {
   id: "at-a-glance",
-  settingsId: SETTINGS_ID,
   name: "At a Glance",
   get description(): string {
     return this.t!("at-a-glance.description");
   },
   position: SlotPanelPosition.AtAGlance,
+  slotPositions: [
+    SlotPanelPosition.AtAGlance,
+    SlotPanelPosition.AboveSidebar,
+    SlotPanelPosition.BelowSidebar,
+    SlotPanelPosition.BelowResults,
+  ],
   waitForResults: true,
   isClientExposed: false,
 
@@ -295,12 +299,15 @@ const atAGlanceSlot: SlotPlugin = {
     },
   ] as SettingField[],
 
-  async execute(query: string, context): Promise<{ html: string }> {
+  async execute(
+    query: string,
+    context,
+  ): Promise<{ title?: string; html: string }> {
     const results = context?.results ?? [];
     if (results.length === 0) return { html: "" };
 
     const [settings, wikipediaDisabled] = await Promise.all([
-      _loadSettings(),
+      _loadSettings(this.settingsId ?? ""),
       isDisabled(WIKIPEDIA_SETTINGS_ID),
     ]);
 
@@ -336,6 +343,7 @@ const atAGlanceSlot: SlotPlugin = {
     });
 
     return {
+      title: this.t!("at-a-glance.title"),
       html:
         '<div class="glance-box degoog-panel degoog-panel--slot degoog-panel--slot-body-padded degoog-vstack">' +
         `<div class="glance-snippet degoog-text degoog-text--md">${escapeHtml(snippet)}</div>` +
