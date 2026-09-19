@@ -182,6 +182,12 @@ export const runBridge = async <T>(
   }
   const [stderr, exitCode] = await Promise.all([stderrPromise, proc.exited]);
   const failure = `${spec.label} runner failed (${exitCode})`;
+  if (garbled) {
+    const details = [stderr.trim(), lastLine].filter(Boolean).join(" | ");
+    throw new Error(
+      details ? `${spec.label} runner broke the rpc protocol: ${details}` : failure,
+    );
+  }
   if (!envelope) throw new Error(stderr.trim() || lastLine || failure);
   if (exitCode !== 0 || !envelope.ok || envelope.data === undefined) {
     throw new Error(envelope.error || stderr.trim() || failure);
