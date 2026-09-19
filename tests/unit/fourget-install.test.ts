@@ -175,6 +175,38 @@ describe("4get install layer", () => {
     });
   });
 
+  test("a redirect off the 4get host is refused", async () => {
+    await withFourGetDir(async (dir) => {
+      globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.redirect).toBe("manual");
+        return new Response("", {
+          status: 302,
+          headers: { Location: "http://127.0.0.1/evil.php" },
+        });
+      }) as typeof fetch;
+      await expect(installFourGet("wiby")).rejects.toThrow("off-host");
+      expect(existsSync(join(dir, "scraper", "wiby.php"))).toBe(false);
+    });
+  });
+
+  test("a same-host https redirect is followed", async () => {
+    await withFourGetDir(async (dir) => {
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.redirect).toBe("manual");
+        const url = String(input);
+        if (!url.includes("followed=1")) {
+          return new Response("", {
+            status: 302,
+            headers: { Location: `${url}?followed=1` },
+          });
+        }
+        return new Response(PHP_BODY);
+      }) as typeof fetch;
+      await installFourGet("wiby");
+      expect(existsSync(join(dir, "scraper", "wiby.php"))).toBe(true);
+    });
+  });
+
   test("uninstalling drops libs nothing else still wants", async () => {
     await withFourGetDir(async (dir) => {
       seed(dir, "scraper", "wiby");

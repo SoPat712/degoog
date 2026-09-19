@@ -6,17 +6,31 @@ import { logger } from "../../../utils/logger";
 import type { CompatCatalogItem, CompatRuntimeNeed } from "../../../../shared/compat-layers";
 import {
   FOURGET_CATALOG,
+  FOURGET_SOURCE_BASE_URL,
   catalogDeps,
   catalogEntry,
   isKnownScraper,
   scraperUrl,
   sharedUrl,
 } from "./catalog";
+import { isHttpRedirect } from "./follow";
 import { scrapersDir, sharedLibDir, stagingRoot } from "./paths";
 import { EXT_PACKAGES, phpStatus } from "./php-runtime";
 
 const NS = "4get-compat";
 const DOWNLOAD_TIMEOUT_MS = 20_000;
+const MAX_DOWNLOAD_REDIRECTS = 5;
+
+const _sourceHost = (): string => new URL(FOURGET_SOURCE_BASE_URL).hostname;
+
+const _allowedSource = (raw: string): boolean => {
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "https:" && parsed.hostname === _sourceHost();
+  } catch {
+    return false;
+  }
+};
 
 let _chain: Promise<unknown> = Promise.resolve();
 
@@ -41,12 +55,31 @@ const _known = (code: string): string => {
 };
 
 const _download = async (url: string): Promise<string> => {
-  const resp = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
-  if (!resp.ok) throw new Error(`Download failed with HTTP ${resp.status}`);
-  const source = await resp.text();
-  if (!source.trim()) throw new Error("Downloaded file was empty");
-  if (!source.includes("<?php")) throw new Error("Downloaded file is not php");
-  return source;
+  if (!_allowedSource(url)) throw new Error("refused non-https 4get source");
+  let current = url;
+  const signal = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
+  for (let hop = 0; hop <= MAX_DOWNLOAD_REDIRECTS; hop++) {
+    const resp = await fetch(current, { signal, redirect: "manual" });
+    if (isHttpRedirect(resp.status)) {
+      const loc = resp.headers.get("location");
+      if (!loc) throw new Error(`Download failed with HTTP ${resp.status}`);
+      let next: string;
+      try {
+        next = new URL(loc, current).href;
+      } catch {
+        throw new Error("4get download returned a malformed redirect");
+      }
+      if (!_allowedSource(next)) throw new Error("refused off-host 4get redirect");
+      current = next;
+      continue;
+    }
+    if (!resp.ok) throw new Error(`Download failed with HTTP ${resp.status}`);
+    const source = await resp.text();
+    if (!source.trim()) throw new Error("Downloaded file was empty");
+    if (!source.includes("<?php")) throw new Error("Downloaded file is not php");
+    return source;
+  }
+  throw new Error("too many 4get download redirects");
 };
 
 const _writeSwap = async (target: string, dir: string, body: string): Promise<void> => {

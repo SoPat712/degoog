@@ -23,6 +23,7 @@ import { runBridge, type RpcFetchReply, type RpcHandlers, type RunnerSpec } from
 import { scrubLog } from "../scrub-log";
 import { catalogEntry, isKnownScraper, isSharedFile } from "./catalog";
 import { optionFields, overridesFrom, type FourGetFilters } from "./engine-config";
+import { followEngineFetch, isHttpRedirect, isWebUrl } from "./follow";
 import { nptKey } from "./npt-key";
 import { FOURGET_PAGES, mapPages, type FourGetPage } from "./pages";
 import { scrapersDir, sharedLibDir, stagingRoot } from "./paths";
@@ -208,18 +209,6 @@ const _browserHeaders = (context?: EngineContext): Record<string, string> => ({
   "Accept-Language": context?.buildAcceptLanguage?.() ?? DEFAULT_ACCEPT_LANGUAGE,
 });
 
-const _isWebUrl = (raw: string): boolean => {
-  try {
-    const { protocol } = new URL(raw);
-    return protocol === "http:" || protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
-const _isHttpRedirect = (status: number): boolean =>
-  status >= 300 && status < 400;
-
 const _toReply = async (resp: Response, fallbackUrl: string): Promise<RpcFetchReply> => ({
   url: resp.url || fallbackUrl,
   status: resp.status,
@@ -233,7 +222,7 @@ const _bridge = (engineId: string, engineName: string, context?: EngineContext):
   const store = useCache<string>(`${CACHE_NAMESPACE}:${engineId}`, CACHE_TTL_MS);
   return {
     onFetch: async (req) => {
-      if (!_isWebUrl(req.url)) {
+      if (!isWebUrl(req.url)) {
         logger.warn(NS, `${engineId} blocked non-http request ${scrubLog(req.url)}`);
         throw new Error("only http(s) requests are allowed");
       }
@@ -243,17 +232,18 @@ const _bridge = (engineId: string, engineName: string, context?: EngineContext):
         headers.Cookie = cookie;
       }
       logger.debug(NS, `${engineId} request ${scrubLog(req.method)} ${scrubLog(req.url)}`);
-      const resp = await fetcher(req.url, {
+      const resp = await followEngineFetch(fetcher, {
+        url: req.url,
+        method: req.method,
         headers,
-        redirect: req.follow ? "follow" : "manual",
-        ...(req.method !== "GET" ? { method: req.method } : {}),
-        ...(req.data ? { body: req.data } : {}),
+        data: req.data,
+        follow: req.follow,
       });
-      if (resp.url && !_isWebUrl(resp.url)) {
+      if (resp.url && !isWebUrl(resp.url)) {
         logger.warn(NS, `${engineId} blocked non-http redirect ${scrubLog(resp.url)}`);
         throw new Error("only http(s) responses are allowed");
       }
-      if (!_isHttpRedirect(resp.status)) {
+      if (!isHttpRedirect(resp.status)) {
         context?.sentinel?.({ ok: resp.ok, status: resp.status }, engineName);
       }
       return _toReply(resp, req.url);
