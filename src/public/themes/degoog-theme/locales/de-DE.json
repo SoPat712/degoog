@@ -89,7 +89,7 @@
     "no-results": "Keine Ergebnisse gefunden.",
     "search-failed": "Suche fehlgeschlagen. Bitte versuche es erneut.",
     "no-engines": "Keine Suchmaschinen installiert. {store}, um welche zu durchsuchen und zu installieren.",
-    "no-engines-store": "Zum Store",
+    "no-engines-store": "Gehe zum Store",
     "sidebar": {
       "engine-performance": "Leistung der Suchmaschinen",
       "people-also-search": "Andere suchten auch nach",
