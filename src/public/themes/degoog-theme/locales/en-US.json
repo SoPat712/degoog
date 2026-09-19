@@ -91,6 +91,7 @@
     "no-engines": "No search engines installed. {store} to browse and install some.",
     "no-engines-store": "Go to the Store",
     "sidebar": {
+      "engine-origin": "Provided by {source}",
       "engine-performance": "Engine Performance",
       "people-also-search": "People also search for",
       "info": "Info",

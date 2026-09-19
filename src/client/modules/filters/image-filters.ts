@@ -3,6 +3,7 @@ import type { EngineTiming } from "../../types";
 import { escapeHtml, escapeAttribute } from "../../utils/dom";
 import { getRegistry, getEngines, isImageSearchType } from "../../utils/engines";
 import { engineStatsHtml, setupRetryLinks } from "../renderer/render-sidebar";
+import { paintOrigins } from "../../utils/search/engine-origins";
 
 const FILTER_BAR_ID = "image-filters-bar";
 const ENGINE_PANEL_ID = "image-engine-panel";
@@ -254,6 +255,7 @@ export const renderImgEngines = (timings: EngineTiming[]): void => {
   const panel = document.getElementById(ENGINE_PANEL_ID);
   if (panel) {
     panel.innerHTML = engineStatsHtml(timings);
+    void paintOrigins(panel);
   }
   if (bar) {
     setupRetryLinks(bar);

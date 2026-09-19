@@ -14,6 +14,9 @@ import {
   compatListHtml,
   compatPackages,
   compatShellHtml,
+  COMPAT_UPDATE_ICON,
+  COMPAT_UPDATE_ICON_BUSY,
+  type CompatListUi,
 } from "./compat-render";
 import type { CompatCatalogItem } from "../../types/compat-catalog";
 
@@ -38,13 +41,41 @@ const _say = (message: string, failed = false): void => {
   el.classList.toggle("compat-status--error", failed);
 };
 
-const _paint = (items: CompatCatalogItem[], query: string, layer: string): void => {
+const _paint = (
+  items: CompatCatalogItem[],
+  query: string,
+  layer: string,
+  ui: CompatListUi,
+): void => {
   const list = document.querySelector<HTMLElement>(`#${MODAL_BODY_ID} #compat-list`);
   if (!list) return;
-  list.innerHTML = compatListHtml(compatFilter(items, query), layer);
+  list.innerHTML = compatListHtml(compatFilter(items, query), layer, ui);
   list
     .querySelectorAll<HTMLImageElement>(".compat-favicon")
     .forEach(attachFaviconFallback);
+};
+
+const _tip = (btn: HTMLButtonElement, label: string): void => {
+  btn.setAttribute("aria-label", label);
+  btn.dataset.tooltip = label;
+};
+
+const _spinUpdate = (btn: HTMLButtonElement, layer: string): void => {
+  const icon = btn.querySelector("i");
+  if (icon) icon.className = COMPAT_UPDATE_ICON_BUSY;
+  btn.disabled = true;
+  btn.setAttribute("aria-busy", "true");
+  btn.classList.remove("compat-btn-update--done");
+  _tip(btn, t(BUSY_KEYS[CompatAction.Update], { layer }));
+};
+
+const _idleUpdate = (btn: HTMLButtonElement, layer: string): void => {
+  const icon = btn.querySelector("i");
+  if (icon) icon.className = COMPAT_UPDATE_ICON;
+  btn.disabled = false;
+  btn.removeAttribute("aria-busy");
+  btn.classList.remove("compat-btn-update--done");
+  _tip(btn, t(`${KEY}compat-update`, { layer }));
 };
 
 const _warnings = (item: CompatCatalogItem, layer: string): string[] => {
@@ -92,10 +123,13 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
   let items: CompatCatalogItem[] = [];
   let query = "";
   const name = layer.label;
+  const updating = new Set<string>();
+  const updated = new Set<string>();
+  const ui = (): CompatListUi => ({ updating, updated });
 
   openCustomModal({
     title: t(`${KEY}compat-title`, { layer: name }),
-    body: compatShellHtml(name),
+    body: compatShellHtml(layer.id),
     wide: true,
   });
 
@@ -107,23 +141,34 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
     code: string,
     btn: HTMLButtonElement,
   ): Promise<void> => {
-    btn.disabled = true;
-    _say(t(BUSY_KEYS[action]));
+    const pulling = action === CompatAction.Update;
+    if (pulling) {
+      updated.delete(code);
+      updating.add(code);
+      _spinUpdate(btn, name);
+    } else {
+      btn.disabled = true;
+      _say(t(BUSY_KEYS[action]));
+    }
     try {
       await sendCompat(layer.id, action, code);
       items = await fetchCompat(layer.id);
-      _paint(items, query, name);
+      if (pulling) {
+        updating.delete(code);
+        updated.add(code);
+      }
+      _paint(items, query, name, ui());
       window.dispatchEvent(new CustomEvent("extensions-saved"));
-      _say(
-        t(
-          action === CompatAction.Update
-            ? `${KEY}compat-updated`
-            : `${KEY}compat-restart`,
-          { layer: name },
-        ),
-      );
+      if (pulling) _say("");
+      else _say(t(`${KEY}compat-restart`, { layer: name }));
     } catch (err) {
-      btn.disabled = false;
+      if (pulling) {
+        updating.delete(code);
+        if (btn.isConnected) _idleUpdate(btn, name);
+        else _paint(items, query, name, ui());
+      } else {
+        btn.disabled = false;
+      }
       _say(err instanceof Error ? err.message : String(err), true);
     }
   };
@@ -152,12 +197,12 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
   const search = body.querySelector<HTMLInputElement>("#compat-search-input");
   search?.addEventListener("input", () => {
     query = search.value;
-    _paint(items, query, name);
+    _paint(items, query, name, ui());
   });
 
   try {
     items = await fetchCompat(layer.id);
-    _paint(items, query, name);
+    _paint(items, query, name, ui());
   } catch (err) {
     _say(err instanceof Error ? err.message : String(err), true);
   }

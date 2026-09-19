@@ -1,6 +1,7 @@
 import type { SearchEngine } from "../../types";
 import type { EngineFilters } from "../../../shared/engine-filters";
 import {
+  COMPAT_LAYER_LABELS,
   CompatLayerId,
   type CompatCatalogItem,
   type CompatLayerInfo,
@@ -68,7 +69,7 @@ const _searxItems = async (): Promise<CompatCatalogItem[]> =>
 export const COMPAT_LAYERS: readonly CompatLayerDef[] = Object.freeze([
   {
     id: CompatLayerId.Searx,
-    label: "SearX",
+    label: COMPAT_LAYER_LABELS[CompatLayerId.Searx],
     settingKey: SEARX_SETTING_KEY,
     loadEngines: loadSearxCompatibilityEngines as () => Promise<CompatEntry[]>,
     listItems: _searxItems,
@@ -79,7 +80,7 @@ export const COMPAT_LAYERS: readonly CompatLayerDef[] = Object.freeze([
   },
   {
     id: CompatLayerId.FourGet,
-    label: "4get",
+    label: COMPAT_LAYER_LABELS[CompatLayerId.FourGet],
     settingKey: FOURGET_SETTING_KEY,
     loadEngines: loadFourGetEngines as () => Promise<CompatEntry[]>,
     listItems: listFourGetItems,

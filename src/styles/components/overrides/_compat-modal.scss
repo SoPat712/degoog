@@ -45,3 +45,17 @@
     color: $danger;
   }
 }
+
+.compat-btn-update {
+  &[disabled] {
+    cursor: wait;
+  }
+
+  &--done {
+    color: $success;
+
+    &:hover {
+      color: $success;
+    }
+  }
+}

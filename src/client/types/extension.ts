@@ -1,4 +1,5 @@
 import type { EngineFilters } from "../../shared/engine-filters";
+import type { EngineOrigin } from "../../shared/engine-origins";
 import type { SettingField } from "../../shared/setting-field";
 
 export type {
@@ -64,6 +65,7 @@ export interface EngineRegistry {
     searchTypes: string[];
     disabledByDefault?: boolean;
     filters?: EngineFilters;
+    origin?: EngineOrigin;
   }>;
   defaults?: Record<string, boolean>;
 }

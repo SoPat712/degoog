@@ -8,6 +8,7 @@ import commands from "./commands";
 import health from "./health";
 import honeypot from "./honeypot";
 import pages, { buildGandalf } from "./pages";
+import teapot from "./teapot";
 import uovadipasqua from "./uovadipasqua";
 import extensions from "./extensions";
 import indexer from "./indexer";
@@ -33,6 +34,7 @@ import themes from "./themes";
 const globalRouter = new Hono();
 
 globalRouter.route("/", health);
+globalRouter.route("/", teapot);
 
 // TODO Consider using a more structured approach for the routes
 // e.g. globalRouter.route("/", commands); becomes globalRouter.route("/commands/", commands);

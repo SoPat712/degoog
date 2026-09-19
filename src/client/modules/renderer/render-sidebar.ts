@@ -4,6 +4,7 @@ import { DEGOOG_ENGINE_NAME } from "../../../shared/search-types";
 import { escapeHtml } from "../../utils/dom";
 import { retryEngine } from "../../utils/search-actions";
 import { engineCountHtml } from "../../utils/search/engine-failure";
+import { originSlot, paintOrigins } from "../../utils/search/engine-origins";
 import type { EngineTimingWithPage } from "../../utils/search/engine-stats";
 
 const t = window.scopedT("themes/degoog");
@@ -68,7 +69,7 @@ export const engineStatsHtml = (timings: EngineTimingWithPage[]): string => {
     statsContent += `
       <div class="engine-stat-row${statusClass}">
         <div class="engine-stat-info">
-          <div class="engine-stat-label degoog-text">${escapeHtml(et.name)}</div>
+          <div class="engine-stat-label degoog-text">${originSlot(et.name)}${escapeHtml(et.name)}</div>
           <div class="engine-stat-meta degoog-text degoog-text--sm degoog-text--secondary">${metaText}</div>
         </div>
         ${action}
@@ -133,6 +134,8 @@ const _wireSidebar = (
   }
 
   setupRetryLinks(sidebar);
+
+  void paintOrigins(sidebar);
 
   sidebar
     .querySelectorAll<HTMLElement>(".related-search-link")

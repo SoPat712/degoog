@@ -4,6 +4,7 @@ import { DEGOOG_ENGINE_NAME } from "../../../shared/search-types";
 import { renderTemplate } from "../../utils/template";
 import { buildResultContext } from "../../modules/renderer/render";
 import { engineCountHtml } from "./engine-failure";
+import { originSlot, paintOrigins } from "./engine-origins";
 import { PANEL_LAYOUT_BREAKPOINT } from "../../modules/renderer/render-media";
 
 const t = window.scopedT("themes/degoog");
@@ -144,10 +145,11 @@ export function updateEngineTimings(
     html += `
       <div class="engine-stat-row${statusClass}">
         <div class="engine-stat-info">
-          <div class="engine-stat-label">${et.name}</div>
+          <div class="engine-stat-label">${originSlot(et.name)}${et.name}</div>
           <div class="engine-stat-meta">${meta}</div>
         </div>
       </div>`;
   }
   body.innerHTML = html;
+  void paintOrigins(body);
 }

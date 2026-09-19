@@ -8,6 +8,18 @@ export const COMPAT_LAYER_IDS: readonly CompatLayerId[] = Object.freeze([
   CompatLayerId.FourGet,
 ]);
 
+export const COMPAT_LAYER_LABELS: Readonly<Record<CompatLayerId, string>> =
+  Object.freeze({
+    [CompatLayerId.Searx]: "SearX",
+    [CompatLayerId.FourGet]: "4get",
+  });
+
+export const COMPAT_LAYER_REPOS: Readonly<Record<CompatLayerId, string>> =
+  Object.freeze({
+    [CompatLayerId.Searx]: "https://github.com/searxng/searxng",
+    [CompatLayerId.FourGet]: "https://git.lolcat.ca/lolcat/4get",
+  });
+
 export const isCompatLayer = (raw: string): raw is CompatLayerId =>
   (COMPAT_LAYER_IDS as readonly string[]).includes(raw);
 

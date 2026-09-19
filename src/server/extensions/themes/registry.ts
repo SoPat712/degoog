@@ -31,6 +31,7 @@ export interface ThemeManifest {
     settings?: string;
     gandalf?: string;
     "robots-takeover"?: string;
+    teapot?: string;
     "404"?: string;
   };
   templates?: Record<string, string>;
@@ -167,6 +168,7 @@ export async function getThemeHtml(
     | "settings"
     | "gandalf"
     | "robots-takeover"
+    | "teapot"
     | "404",
 ): Promise<string | null> {
   const theme = await getActiveTheme();

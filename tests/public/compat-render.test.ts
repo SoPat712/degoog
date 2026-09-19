@@ -1,10 +1,14 @@
 import { describe, test, expect, beforeAll } from "bun:test";
-import type { CompatCatalogItem } from "../../src/shared/compat-layers";
+import {
+  CompatLayerId,
+  COMPAT_LAYER_REPOS,
+  type CompatCatalogItem,
+} from "../../src/shared/compat-layers";
 
 let compatGroups: (items: CompatCatalogItem[]) => { key: string; items: CompatCatalogItem[] }[];
 let compatPackages: (item: CompatCatalogItem) => string[];
 let compatListHtml: (items: CompatCatalogItem[], layer: string) => string;
-let compatShellHtml: (layer: string) => string;
+let compatShellHtml: (id: CompatLayerId) => string;
 
 const makeItem = (over: Partial<CompatCatalogItem> = {}): CompatCatalogItem => ({
   code: "mojeek",
@@ -19,8 +23,11 @@ const makeItem = (over: Partial<CompatCatalogItem> = {}): CompatCatalogItem => (
 beforeAll(async () => {
   const stubT =
     (): ((key: string, vars?: Record<string, string>) => string) =>
-    (key: string, vars?: Record<string, string>) =>
-      vars?.layer ? `${key}|${vars.layer}` : key;
+    (key: string, vars?: Record<string, string>) => {
+      if (key.endsWith("compat-intro-searx")) return "{link} is SearXNG";
+      if (key.endsWith("compat-intro-4get")) return "{link} is 4get";
+      return vars?.layer ? `${key}|${vars.layer}` : key;
+    };
   const createEl = (): { textContent: string; innerHTML: string } => {
     let text = "";
     return {
@@ -68,7 +75,7 @@ describe("compatibility layer catalogue rendering", () => {
   });
 
   test("search placeholder and empty state carry the layer name", () => {
-    expect(compatShellHtml("4get")).toContain(
+    expect(compatShellHtml(CompatLayerId.FourGet)).toContain(
       "settings-page.extensions.compat-search|4get",
     );
     expect(compatListHtml([], "SearX")).toContain(
@@ -81,6 +88,20 @@ describe("compatibility layer catalogue rendering", () => {
     expect(shared).toContain("settings-page.extensions.compat-shared-hint|4get");
     const update = compatListHtml([makeItem({ installed: true })], "SearX");
     expect(update).toContain("settings-page.extensions.compat-update|SearX");
+  });
+
+  test("modal shell explains the layer and links to its repo", () => {
+    const searx = compatShellHtml(CompatLayerId.Searx);
+    expect(searx).toContain("compat-note-intro");
+    expect(searx).toContain(`href="${COMPAT_LAYER_REPOS[CompatLayerId.Searx]}"`);
+    expect(searx).toContain("is SearXNG");
+    expect(searx).not.toContain("{link}");
+    const fourget = compatShellHtml(CompatLayerId.FourGet);
+    expect(fourget).toContain(
+      `href="${COMPAT_LAYER_REPOS[CompatLayerId.FourGet]}"`,
+    );
+    expect(fourget).toContain("is 4get");
+    expect(fourget).not.toContain("{link}");
   });
 
   test("quotes in catalogue values cannot escape an attribute", () => {

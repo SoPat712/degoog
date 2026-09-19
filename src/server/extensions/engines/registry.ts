@@ -32,6 +32,8 @@ import {
   loadCompatEngines,
   type CompatEntry,
 } from "../compatibility-layer/registry";
+import { engineOrigin, storeOrigins } from "./origins";
+import type { EngineOrigin } from "../../../shared/engine-origins";
 
 const builtinsDir = join(import.meta.dir, "builtins");
 
@@ -54,6 +56,7 @@ export interface EngineCatalogEntry {
   searchTypes: EngineSearchType[];
   primaryType: EngineSearchType;
   filters?: EngineFilters;
+  origin: EngineOrigin;
 }
 
 interface PluginEntry {
@@ -222,8 +225,9 @@ const engineRegistry = createRegistry<PluginEntry>({
 export const listEngineIds = (): string[] =>
   allEngineEntries().map((e) => e.id);
 
-export const listEngines = async (): Promise<EngineCatalogEntry[]> =>
-  Promise.all(
+export const listEngines = async (): Promise<EngineCatalogEntry[]> => {
+  const origins = await storeOrigins();
+  return Promise.all(
     allEngineEntries().map(async (e) => {
       const searchTypes = await resolveEngineTypes(e);
       return {
@@ -233,9 +237,11 @@ export const listEngines = async (): Promise<EngineCatalogEntry[]> =>
         searchTypes,
         primaryType: primaryType(searchTypes),
         filters: e.filters,
+        origin: engineOrigin(e, origins),
       };
     }),
   );
+};
 
 export const getEngineMap = (): Record<string, SearchEngine> =>
   Object.fromEntries(allEngineEntries().map((e) => [e.id, e.instance]));
