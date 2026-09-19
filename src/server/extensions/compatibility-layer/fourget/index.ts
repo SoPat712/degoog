@@ -217,6 +217,9 @@ const _isWebUrl = (raw: string): boolean => {
   }
 };
 
+const _isHttpRedirect = (status: number): boolean =>
+  status >= 300 && status < 400;
+
 const _toReply = async (resp: Response, fallbackUrl: string): Promise<RpcFetchReply> => ({
   url: resp.url || fallbackUrl,
   status: resp.status,
@@ -242,7 +245,7 @@ const _bridge = (engineId: string, engineName: string, context?: EngineContext):
       logger.debug(NS, `${engineId} request ${scrubLog(req.method)} ${scrubLog(req.url)}`);
       const resp = await fetcher(req.url, {
         headers,
-        redirect: "follow",
+        redirect: req.follow ? "follow" : "manual",
         ...(req.method !== "GET" ? { method: req.method } : {}),
         ...(req.data ? { body: req.data } : {}),
       });
@@ -250,7 +253,9 @@ const _bridge = (engineId: string, engineName: string, context?: EngineContext):
         logger.warn(NS, `${engineId} blocked non-http redirect ${scrubLog(resp.url)}`);
         throw new Error("only http(s) responses are allowed");
       }
-      context?.sentinel?.({ ok: resp.ok, status: resp.status }, engineName);
+      if (!_isHttpRedirect(resp.status)) {
+        context?.sentinel?.({ ok: resp.ok, status: resp.status }, engineName);
+      }
       return _toReply(resp, req.url);
     },
     onCache: async (req) => {

@@ -14,6 +14,7 @@ export interface RpcFetchRequest {
   headers: Record<string, string>;
   cookies: Record<string, string>;
   data?: string;
+  follow?: boolean;
 }
 
 export interface RpcFetchReply {
@@ -61,6 +62,7 @@ const _asFetchRequest = (msg: RpcMessage): RpcFetchRequest => ({
   headers: (msg.headers as Record<string, string>) ?? {},
   cookies: (msg.cookies as Record<string, string>) ?? {},
   data: typeof msg.data === "string" ? msg.data : undefined,
+  follow: msg.follow === true,
 });
 
 const _asCacheRequest = (msg: RpcMessage): RpcCacheRequest => ({

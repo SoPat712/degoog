@@ -228,6 +228,7 @@ class fuckcurl {
 			"method" => $this->method(),
 			"headers" => $this->headers(),
 			"cookies" => $this->cookies(),
+			"follow" => (bool)$this->opt(CURLOPT_FOLLOWLOCATION),
 		];
 
 		$body = $this->body();

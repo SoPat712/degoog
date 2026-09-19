@@ -67,6 +67,9 @@ class demo {
 		$curl = curl_init();
 		curl_setopt($curl, CURLOPT_URL, "https://example.invalid/search?q=" . urlencode($get["s"]));
 		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+		if($get["s"] === "follow"){
+			curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+		}
 		curl_setopt($curl, CURLOPT_HTTPHEADER, ["User-Agent: " . config::USER_AGENT, "Accept: text/html"]);
 		curl_setopt($curl, CURLOPT_HEADERFUNCTION, function($handle, $line) use (&$seen){
 			$seen[] = trim($line);
@@ -89,7 +92,7 @@ class demo {
 			"answer" => [],
 			"web" => [[
 				"title" => "page " . $page . " " . $get["country"] . " " . $get["nsfw"],
-				"description" => trim($body) . " http=" . $code . " headers=" . count($seen),
+				"description" => trim($body) . " http=" . $code . " headers=" . count($seen) . " seen=" . implode("|", $seen),
 				"url" => "https://example.invalid/result/" . $page,
 				"thumb" => ["url" => "https://example.invalid/thumb.png", "ratio" => "16:9"]
 			]],
@@ -212,8 +215,40 @@ describe("4get php bridge", () => {
     expect(seen.length).toBe(1);
     expect(seen[0].url).toContain("q=cats");
     expect(seen[0].method).toBe("GET");
+    expect(seen[0].follow).toBe(false);
     expect(seen[0].headers["User-Agent"]).toBe("degoog-test-agent");
     expect(seen[0].headers.Accept).toBe("text/html");
+  });
+
+  maybe("CURLOPT_FOLLOWLOCATION is forwarded so degoog can honor it", async () => {
+    const seen: RpcFetchRequest[] = [];
+    await runBridge<SearchResult>(
+      SPEC,
+      runnerPath,
+      { ...basePayload(), action: "search", code: "demo", type: "web", query: "follow", npt: false, source: "Demo" },
+      handlers(seen),
+    );
+    expect(seen[0].follow).toBe(true);
+  });
+
+  maybe("set-cookie from a 302 is replayed into CURLOPT_HEADERFUNCTION", async () => {
+    const out = await runBridge<SearchResult>(
+      SPEC,
+      runnerPath,
+      { ...basePayload(), action: "search", code: "demo", type: "web", query: "cats", npt: false, source: "Demo" },
+      {
+        onFetch: async (req: RpcFetchRequest) => ({
+          url: req.url,
+          status: 302,
+          headers: { location: "https://example.invalid/next" },
+          cookies: { "techaro.lol-anubis-cookie": "token" },
+          text: "",
+        }),
+        onCache: handlers([]).onCache,
+      },
+    );
+    expect(out.results[0].snippet).toContain("http=302");
+    expect(out.results[0].snippet).toContain("techaro.lol-anubis-cookie=token");
   });
 
   maybe("response headers are replayed into CURLOPT_HEADERFUNCTION", async () => {
