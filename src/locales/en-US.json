@@ -81,8 +81,32 @@
       "last-checked": "Last checked"
     },
     "server": {
+      "config": {
+        "heading": "Presets & backup",
+        "presets-label": "Presets",
+        "backup-label": "Backup"
+      },
+      "backup": {
+        "desc": "Move this instance's server settings somewhere else, or put them back. The file holds everything on this tab, proxy URLs and custom lists included, so treat it like a password.",
+        "export-heading": "Export",
+        "export-desc": "Download every server setting as a JSON file.",
+        "export-button": "Download backup",
+        "exporting": "Preparing...",
+        "exported": "Backup downloaded",
+        "export-failed": "Export failed",
+        "import-heading": "Import",
+        "import-desc": "Restore a backup. Settings in the file overwrite the ones here, anything it does not mention is left alone.",
+        "import-choose": "Choose backup",
+        "import-drop": "or drop a .json file here",
+        "import-button": "Restore backup",
+        "import-confirm": "This overwrites the server settings listed in the backup, then reloads this page so the new values show everywhere. There is no undo.",
+        "importing": "Restoring...",
+        "imported": "Restored {count} settings",
+        "imported-reloading": "Settings restored, reloading...",
+        "import-invalid": "That file is not a Degoog settings backup",
+        "import-failed": "Import failed"
+      },
       "presets": {
-        "heading": "Server presets",
         "desc": "One click for a common setup. It overwrites the settings listed below. Environment variables and your custom lists stay put.",
         "select-label": "Preset",
         "select-placeholder": "Choose a preset",

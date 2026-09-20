@@ -77,8 +77,32 @@
       "last-checked": "Dernière vérification"
     },
     "server": {
+      "config": {
+        "heading": "Préréglages et sauvegarde",
+        "presets-label": "Préréglages",
+        "backup-label": "Sauvegarde"
+      },
+      "backup": {
+        "desc": "Déplace les réglages serveur de cette instance ailleurs, ou remets-les en place. Le fichier contient tout ce qui se trouve sur cet onglet, URLs de proxy et listes personnalisées comprises : traite-le comme un mot de passe.",
+        "export-heading": "Export",
+        "export-desc": "Télécharge tous les réglages serveur dans un fichier JSON.",
+        "export-button": "Télécharger la sauvegarde",
+        "exporting": "Préparation...",
+        "exported": "Sauvegarde téléchargée",
+        "export-failed": "Échec de l'export",
+        "import-heading": "Import",
+        "import-desc": "Restaure une sauvegarde. Les réglages du fichier écrasent ceux d'ici, ce qu'il ne mentionne pas reste intact.",
+        "import-choose": "Choisir une sauvegarde",
+        "import-drop": "ou dépose un fichier .json ici",
+        "import-button": "Restaurer la sauvegarde",
+        "import-confirm": "Cela écrase les réglages serveur listés dans la sauvegarde, puis recharge cette page pour que les nouvelles valeurs apparaissent partout. Aucun retour en arrière.",
+        "importing": "Restauration...",
+        "imported": "{count} réglages restaurés",
+        "imported-reloading": "Réglages restaurés, rechargement...",
+        "import-invalid": "Ce fichier n'est pas une sauvegarde de réglages Degoog",
+        "import-failed": "Échec de l'import"
+      },
       "presets": {
-        "heading": "Préréglages serveur",
         "desc": "Un clic pour une config courante. Ça écrase les réglages listés dessous. Les variables d'environnement et vos listes perso ne bougent pas.",
         "select-label": "Préréglage",
         "select-placeholder": "Choisir un préréglage",

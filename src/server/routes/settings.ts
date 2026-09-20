@@ -24,52 +24,39 @@ import {
 } from "../utils/shortcuts-settings";
 import {
   getInstanceSettings,
-  setInstanceSettings,
   updateInstanceSettings,
   type ServerSettingValue,
 } from "../utils/server-settings";
 import { writeSyncedDefaults } from "../utils/synced-settings";
-import { startQueue, stopQueue } from "../indexer/queue";
-import { ReloadMode, reloadSync } from "../extensions/store/reload-sync";
 import { COMPAT_SETTING_KEYS } from "../extensions/compatibility-layer/registry";
 import { ExtensionStoreType } from "../types";
+import { ReloadMode, reloadSync } from "../extensions/store/reload-sync";
 import {
   SETTINGS_SCHEMA,
   coerceSetting,
   type SettingKey,
 } from "../utils/settings-schema";
 import {
-  isIndexerListKey,
-  readIndexerLists,
-  writeIndexerList,
-} from "../indexer/config/lists";
-import {
-  isDomainListKey,
-  readDomainLists,
-  writeDomainList,
-} from "../utils/domain-lists";
+  LIST_FIELDS,
+  applySettingsBatch,
+  isListField,
+  reconcileIndexerQueue,
+  reloadCompat,
+  savedBody,
+  writeListField,
+} from "../utils/settings-write";
+import { readIndexerLists } from "../indexer/config/lists";
+import { readDomainLists, writeDomainList } from "../utils/domain-lists";
 import {
   MAX_INLINE_FIELD_CHARS,
   OVERSIZED_FIELDS_KEY,
-  OVERSIZED_TEXT_FIELDS,
   type OversizedFieldInfo,
 } from "../../shared/indexer";
-import { SEARCH_LIST_FIELDS } from "../../shared/settings-lists";
 import { logger } from "../utils/logger";
 import { getRestartState } from "../utils/restart-state";
 import { requestRestart } from "../utils/server-lifecycle";
 
 const router = new Hono();
-
-const LIST_FIELDS = [...OVERSIZED_TEXT_FIELDS, ...SEARCH_LIST_FIELDS] as const;
-
-const isListField = (key: string): boolean =>
-  isIndexerListKey(key) || isDomainListKey(key);
-
-const writeListField = async (key: string, value: string): Promise<void> => {
-  if (isIndexerListKey(key)) await writeIndexerList(key, value);
-  else if (isDomainListKey(key)) await writeDomainList(key, value);
-};
 
 const _normalizeHostname = (raw: string): string =>
   raw
@@ -139,19 +126,6 @@ const fetchIp = async (useFn: typeof fetch): Promise<string | null> => {
   }
 };
 
-const _applySchemaUpdates = (
-  body: Record<string, string>,
-): Record<string, string | boolean> => {
-  const updates: Record<string, string | boolean> = {};
-  for (const [key, def] of Object.entries(SETTINGS_SCHEMA)) {
-    const raw = body[key];
-    if (raw === undefined || typeof raw !== "string") continue;
-    if (isListField(key)) continue;
-    updates[key] = coerceSetting(def, raw);
-  }
-  return updates;
-};
-
 const _countLines = (text: string): number => {
   if (text.length === 0) return 0;
   let lines = 1;
@@ -175,15 +149,6 @@ const trimBigFields = (
   }
   if (Object.keys(oversized).length > 0) out[OVERSIZED_FIELDS_KEY] = oversized;
   return out;
-};
-
-const _persistListFields = async (
-  body: Record<string, string>,
-): Promise<void> => {
-  for (const key of LIST_FIELDS) {
-    const raw = body[key];
-    if (typeof raw === "string") await writeListField(key, raw);
-  }
 };
 
 router.get("/api/settings/streaming", async (c) => {
@@ -219,65 +184,12 @@ router.get("/api/settings/general", async (c) => {
   return c.json(trimBigFields({ ...settings, ...indexerLists, ...domainLists }));
 });
 
-const _reloadCompat = async (): Promise<boolean> => {
-  try {
-    await reloadSync(ExtensionStoreType.Engine, ReloadMode.Bust);
-    return true;
-  } catch (err) {
-    logger.warn("settings", "engine reload after a compatibility layer toggle failed", err);
-    return false;
-  }
-};
-
-const _compatToggled = (
-  updates: Record<string, string | boolean>,
-  existing: Record<string, ServerSettingValue>,
-): boolean =>
-  COMPAT_SETTING_KEYS.some(
-    (key) => key in updates && asBoolean(updates[key]) !== asBoolean(existing[key]),
-  );
-
-type SaveResult = {
-  ok: true;
-  searxReloadFailed?: true;
-  indexerStartFailed?: true;
-};
-
-const _savedBody = (reloaded: boolean, indexerUp = true): SaveResult => {
-  const body: SaveResult = { ok: true };
-  if (!reloaded) body.searxReloadFailed = true;
-  if (!indexerUp) body.indexerStartFailed = true;
-  return body;
-};
-
-const _reconcileIndexerQueue = async (): Promise<boolean> => {
-  const settings = await getInstanceSettings();
-  if (!asBoolean(settings.degoogIndexerEnabled)) {
-    await stopQueue();
-    return true;
-  }
-  try {
-    await startQueue();
-    return true;
-  } catch (err) {
-    logger.error("indexer", "queue start failed", err);
-    return false;
-  }
-};
-
 router.post("/api/settings/general", async (c) => {
   const denied = await guardSettingsRoute(c, "POST /api/settings/general");
   if (denied) return denied;
   const body = await readObjectBody<Record<string, string>>(c);
   if (!body) return c.json({ error: "Invalid JSON" }, 400);
-  const existing = await getInstanceSettings();
-  const updates = _applySchemaUpdates(body);
-  await setInstanceSettings({ ...existing, ...updates });
-  await _persistListFields(body);
-  await syncBlocklist();
-  const indexerUp = await _reconcileIndexerQueue();
-  const toggled = _compatToggled(updates, existing);
-  return c.json(_savedBody(toggled ? await _reloadCompat() : true, indexerUp));
+  return c.json(await applySettingsBatch(body));
 });
 
 router.post("/api/settings/field", async (c) => {
@@ -300,9 +212,9 @@ router.post("/api/settings/field", async (c) => {
   }
   await syncBlocklist();
   const indexerUp =
-    key === "degoogIndexerEnabled" ? await _reconcileIndexerQueue() : true;
-  const reloaded = COMPAT_SETTING_KEYS.includes(key) ? await _reloadCompat() : true;
-  return c.json(_savedBody(reloaded, indexerUp));
+    key === "degoogIndexerEnabled" ? await reconcileIndexerQueue() : true;
+  const reloaded = COMPAT_SETTING_KEYS.includes(key) ? await reloadCompat() : true;
+  return c.json(savedBody(reloaded, indexerUp));
 });
 
 router.post("/api/settings/domain-action", async (c) => {

@@ -76,8 +76,32 @@
       "last-checked": "Ultimo controllo"
     },
     "server": {
+      "config": {
+        "heading": "Preset e backup",
+        "presets-label": "Preset",
+        "backup-label": "Backup"
+      },
+      "backup": {
+        "desc": "Sposta altrove le impostazioni server di questa istanza, o rimettile a posto. Il file contiene tutto quello che sta in questa scheda, URL dei proxy ed elenchi personalizzati inclusi, quindi trattalo come una password.",
+        "export-heading": "Esporta",
+        "export-desc": "Scarica ogni impostazione del server come file JSON.",
+        "export-button": "Scarica backup",
+        "exporting": "Preparazione...",
+        "exported": "Backup scaricato",
+        "export-failed": "Esportazione fallita",
+        "import-heading": "Importa",
+        "import-desc": "Ripristina un backup. Le impostazioni nel file sovrascrivono quelle presenti, quello che non menziona resta com'è.",
+        "import-choose": "Scegli backup",
+        "import-drop": "oppure trascina qui un file .json",
+        "import-button": "Ripristina backup",
+        "import-confirm": "Questo sovrascrive le impostazioni server elencate nel backup, poi ricarica questa pagina così i nuovi valori compaiono ovunque. Non si torna indietro.",
+        "importing": "Ripristino in corso...",
+        "imported": "Ripristinate {count} impostazioni",
+        "imported-reloading": "Impostazioni ripristinate, ricarico...",
+        "import-invalid": "Quel file non è un backup delle impostazioni di Degoog",
+        "import-failed": "Importazione fallita"
+      },
       "presets": {
-        "heading": "Preset server",
         "desc": "Un clic per una configurazione comune. Sovrascrive le impostazioni elencate sotto. Variabili d'ambiente e liste personalizzate restano al loro posto.",
         "select-label": "Preset",
         "select-placeholder": "Scegli un preset",

@@ -78,8 +78,32 @@
       "last-checked": "Zuletzt geprüft"
     },
     "server": {
+      "config": {
+        "heading": "Voreinstellungen & Sicherung",
+        "presets-label": "Voreinstellungen",
+        "backup-label": "Sicherung"
+      },
+      "backup": {
+        "desc": "Verschiebe die Servereinstellungen dieser Instanz woandershin oder spiele sie zurück. Die Datei enthält alles auf diesem Tab, inklusive Proxy-URLs und eigener Listen, behandle sie also wie ein Passwort.",
+        "export-heading": "Export",
+        "export-desc": "Lade jede Servereinstellung als JSON-Datei herunter.",
+        "export-button": "Sicherung herunterladen",
+        "exporting": "Wird vorbereitet...",
+        "exported": "Sicherung heruntergeladen",
+        "export-failed": "Export fehlgeschlagen",
+        "import-heading": "Import",
+        "import-desc": "Eine Sicherung zurückspielen. Einstellungen aus der Datei überschreiben die hiesigen, alles Nicht-Erwähnte bleibt unangetastet.",
+        "import-choose": "Sicherung wählen",
+        "import-drop": "oder ziehe eine .json-Datei hierher",
+        "import-button": "Sicherung einspielen",
+        "import-confirm": "Das überschreibt die in der Sicherung aufgeführten Servereinstellungen und lädt diese Seite anschließend neu, damit die neuen Werte überall erscheinen. Es gibt kein Zurück.",
+        "importing": "Wird eingespielt...",
+        "imported": "{count} Einstellungen wiederhergestellt",
+        "imported-reloading": "Einstellungen wiederhergestellt, wird neu geladen...",
+        "import-invalid": "Diese Datei ist keine Degoog-Einstellungssicherung",
+        "import-failed": "Import fehlgeschlagen"
+      },
       "presets": {
-        "heading": "Server-Vorlagen",
         "desc": "Wende eine einmalige Vorlage für gängige Betriebsszenarien an. Vorlagen überschreiben die aufgeführten Einstellungen, setzen aber keine Umgebungsvariablen und ersetzen nicht deine eigenen Listen.",
         "select-label": "Vorlage",
         "select-placeholder": "Vorlage auswählen",

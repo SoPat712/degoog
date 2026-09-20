@@ -319,6 +319,67 @@ html:has(.settings-page-body) {
   font-weight: 500;
 }
 
+.settings-server-block + .settings-server-block {
+  margin-top: $space-6;
+}
+
+.settings-subheading {
+  font-size: $font-size-md;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 $space-2;
+}
+
+.settings-backup-item-title {
+  font-size: $font-size-base;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-backup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: $space-5;
+}
+
+.settings-backup-item {
+  display: grid;
+  align-content: start;
+  gap: $space-3;
+  min-width: 0;
+
+  .settings-desc {
+    margin-bottom: 0;
+  }
+
+  .degoog-file {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .degoog-file-trigger i {
+    display: none;
+  }
+
+  .degoog-file-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .degoog-file-name:not([hidden]) ~ .degoog-file-drop-hint {
+    display: none;
+  }
+}
+
+.settings-backup-action {
+  justify-self: start;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
 .settings-server-preset-list {
   display: grid;
   gap: $space-1;
