@@ -18,6 +18,7 @@ import { initHoneypot } from "./honeypot";
 import { bindToggleAutoSave, injectFieldSaveBtns } from "./auto-save";
 import { renderServerContent } from "./render";
 import { flashError, flashSuccess } from "../shared/flash-msg";
+import { fetchRestartState, formatReason } from "../shared/restart-state";
 import {
   PRESET_FIELD_DOM_IDS,
   PRESET_TOGGLE_KEYS,
@@ -426,6 +427,23 @@ const _initApiKeyControls = (
   );
 };
 
+let _restartSyncRun = 0;
+
+const _syncRestartPending = async (
+  getToken: () => string | null,
+): Promise<void> => {
+  const wrap = document.getElementById("settings-server-restart-pending");
+  const list = document.getElementById("settings-server-restart-reasons");
+  if (!wrap || !list) return;
+  const run = ++_restartSyncRun;
+  const state = await fetchRestartState(getToken);
+  if (run !== _restartSyncRun) return;
+  wrap.hidden = !state?.pending;
+  list.innerHTML = (state?.reasons ?? [])
+    .map((r) => `<li>• ${escapeHtml(formatReason(r))}</li>`)
+    .join("");
+};
+
 const _bindRestartButton = (getToken: () => string | null): void => {
   const btn = document.getElementById(
     "settings-server-restart",
@@ -462,6 +480,11 @@ export async function initServerTab(
   if (container) container.innerHTML = renderServerContent();
 
   _bindRestartButton(getToken);
+  void _syncRestartPending(getToken);
+  window.addEventListener("settings-tab-changed", (e) => {
+    if ((e as CustomEvent<string>).detail === "server")
+      void _syncRestartPending(getToken);
+  });
   _bindToggles();
 
   document

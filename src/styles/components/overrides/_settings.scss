@@ -280,6 +280,20 @@ html:has(.settings-page-body) {
   margin: 0 0 $space-4;
 }
 
+.settings-server-restart-pending {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin: 0 0 $space-4;
+  font-size: $font-size-small;
+  color: var(--text-secondary);
+
+  .store-restart-intro,
+  .store-restart-list {
+    color: inherit;
+  }
+}
+
 .settings-server-presets {
   .degoog-select-wrap {
     max-width: 28rem;

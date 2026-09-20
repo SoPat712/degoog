@@ -617,7 +617,7 @@
       "heading": "Redémarrage requis",
       "desc": "Certaines des extensions que vous avez installées ne se chargeront pas tant que le serveur n'a pas redémarré.",
       "modal-intro": "Ces extensions ne font rien tant que le serveur n'a pas redémarré :",
-      "modal-note": "Le redémarrage arrête Degoog pendant quelques secondes. Vous pouvez redémarrer plus tard depuis Paramètres › Général.",
+      "modal-note": "Le redémarrage arrête Degoog pendant quelques secondes. Vous pouvez redémarrer plus tard depuis Paramètres › Serveur.",
       "later": "Pas maintenant",
       "button": "Redémarrer le serveur",
       "confirm": "Ceci redémarre Degoog. Les recherches en cours sont coupées quelques secondes. Continuer ?",

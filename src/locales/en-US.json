@@ -697,7 +697,7 @@
       "heading": "Restart required",
       "desc": "Some of the extensions you installed will not load until the server restarts.",
       "modal-intro": "These extensions do nothing until the server restarts:",
-      "modal-note": "Restarting stops Degoog for a few seconds. You can restart later from Settings › General.",
+      "modal-note": "Restarting stops Degoog for a few seconds. You can restart later from Settings › Server.",
       "later": "Not now",
       "button": "Restart server",
       "confirm": "This restarts Degoog. In-flight searches get cut off for a few seconds. Continue?",

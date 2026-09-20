@@ -1,20 +1,31 @@
 import { authHeaders } from "../../utils/request";
 import { escapeHtml } from "../../utils/dom";
 import { getBase } from "../../utils/base-url";
-import { isRestartState } from "../../../shared/restart-state";
+import { fetchRestartState, formatReason } from "../shared/restart-state";
 
 const t = window.scopedT("core");
 
+const DISMISSED_KEY = "store-restart-dismissed";
+
 let lastShownReasons = "";
 let checkInFlight = false;
+let noticeOpen = false;
 
-const REASON_RE = /^(\w+) "(.+)" was \w+$/;
+const readDismissed = (): string => {
+  try {
+    return localStorage.getItem(DISMISSED_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
 
-const formatReason = (reason: string): string => {
-  const parsed = REASON_RE.exec(reason);
-  if (!parsed) return reason;
-  const [, type, name] = parsed;
-  return `${type[0].toUpperCase()}${type.slice(1)} - ${name}`;
+const writeDismissed = (key: string): void => {
+  try {
+    if (key) localStorage.setItem(DISMISSED_KEY, key);
+    else localStorage.removeItem(DISMISSED_KEY);
+  } catch (err) {
+    console.debug("[store] restart dismissal persist failed", err);
+  }
 };
 
 function buildModal(reasons: string[]): {
@@ -54,6 +65,7 @@ function buildModal(reasons: string[]): {
     ).filter((el) => !el.hasAttribute("disabled"));
 
   const close = (): void => {
+    noticeOpen = false;
     overlay.remove();
     document.removeEventListener("keydown", onKey);
     previouslyFocused?.focus();
@@ -82,10 +94,15 @@ function buildModal(reasons: string[]): {
   });
   document.addEventListener("keydown", onKey);
   overlay
-    .querySelectorAll(".store-restart-close, .store-restart-later")
-    .forEach((el) => el.addEventListener("click", close));
+    .querySelector(".store-restart-close")
+    ?.addEventListener("click", close);
+  overlay.querySelector(".store-restart-later")?.addEventListener("click", () => {
+    writeDismissed(JSON.stringify(reasons));
+    close();
+  });
 
   document.body.appendChild(overlay);
+  noticeOpen = true;
   getFocusable()[0]?.focus();
   return {
     overlay,
@@ -99,25 +116,17 @@ function buildModal(reasons: string[]): {
 export const pendingReasons = async (
   getToken: () => string | null,
 ): Promise<string[] | null> => {
-  let state;
-  try {
-    const res = await fetch(`${getBase()}/api/settings/restart-state`, {
-      headers: authHeaders(getToken),
-    });
-    if (!res.ok) return null;
-    const payload: unknown = await res.json();
-    if (!isRestartState(payload)) {
-      console.debug("[store] restart state payload invalid", payload);
-      return null;
-    }
-    state = payload;
-  } catch (err) {
-    console.debug("[store] restart state fetch failed", err);
+  const state = await fetchRestartState(getToken);
+  if (!state) return null;
+
+  if (!state.pending) {
+    writeDismissed("");
+    if (!noticeOpen) lastShownReasons = "";
     return null;
   }
 
   const key = JSON.stringify(state.reasons);
-  if (!state.pending || key === lastShownReasons) return null;
+  if (key === lastShownReasons || key === readDismissed()) return null;
   lastShownReasons = key;
   return state.reasons;
 };
