@@ -9,6 +9,7 @@ const DISMISSED_KEY = "store-restart-dismissed";
 
 let lastShownReasons = "";
 let checkInFlight = false;
+let noticeOpen = false;
 
 const readDismissed = (): string => {
   try {
@@ -64,6 +65,7 @@ function buildModal(reasons: string[]): {
     ).filter((el) => !el.hasAttribute("disabled"));
 
   const close = (): void => {
+    noticeOpen = false;
     overlay.remove();
     document.removeEventListener("keydown", onKey);
     previouslyFocused?.focus();
@@ -100,6 +102,7 @@ function buildModal(reasons: string[]): {
   });
 
   document.body.appendChild(overlay);
+  noticeOpen = true;
   getFocusable()[0]?.focus();
   return {
     overlay,
@@ -118,7 +121,7 @@ export const pendingReasons = async (
 
   if (!state.pending) {
     writeDismissed("");
-    if (!document.querySelector(".store-restart-overlay")) lastShownReasons = "";
+    if (!noticeOpen) lastShownReasons = "";
     return null;
   }
 
