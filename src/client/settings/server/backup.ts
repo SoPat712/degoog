@@ -3,50 +3,85 @@ import { authHeaders, jsonHeaders } from "../../utils/request";
 import { confirmModal } from "../../modules/modals/confirm-modal/confirm";
 import { initFileUpload } from "../../utils/file-upload";
 import { flashError, flashSuccess } from "../shared/flash-msg";
-import { MAX_SETTINGS_BACKUP_BYTES } from "../../../shared/settings-backup";
+import {
+  BackupError,
+  MAX_SETTINGS_BACKUP_BYTES,
+} from "../../../shared/settings-backup";
 
 const t = window.scopedT("core");
 
-const MAX_BACKUP_BYTES = MAX_SETTINGS_BACKUP_BYTES;
 const REVOKE_DELAY_MS = 60_000;
 const RELOAD_DELAY_MS = 900;
 const JSON_TYPE = "application/json";
+const TOO_LARGE_STATUS = 413;
 
-type BackupKind = "export" | "import";
-type ImportResponse = {
-  applied?: number;
-  reposAdded?: number;
-  extensionsInstalled?: number;
-  error?: string;
+const KEY = {
+  Exporting: "settings-page.server.backup.exporting",
+  Exported: "settings-page.server.backup.exported",
+  ExportFailed: "settings-page.server.backup.export-failed",
+  ExportTooLarge: "settings-page.server.backup.export-too-large",
+  Importing: "settings-page.server.backup.importing",
+  ImportButton: "settings-page.server.backup.import-button",
+  ImportConfirm: "settings-page.server.backup.import-confirm",
+  ImportFailed: "settings-page.server.backup.import-failed",
+  ImportInvalid: "settings-page.server.backup.import-invalid",
+  ImportEmpty: "settings-page.server.backup.import-empty",
+  ImportTooLarge: "settings-page.server.backup.import-too-large",
+  Imported: "settings-page.server.backup.imported",
+  ImportedExtensions: "settings-page.server.backup.imported-extensions",
+  ImportedPartial: "settings-page.server.backup.imported-partial",
+  ImportedReloading: "settings-page.server.backup.imported-reloading",
+} as const;
+
+const ERROR_KEYS: Record<BackupError, string> = {
+  [BackupError.TooLarge]: KEY.ImportTooLarge,
+  [BackupError.InvalidJson]: KEY.ImportInvalid,
+  [BackupError.Unrecognised]: KEY.ImportInvalid,
+  [BackupError.Empty]: KEY.ImportEmpty,
+  [BackupError.WriteFailed]: KEY.ImportFailed,
 };
 
-const _status = (kind: BackupKind, text: string): void => {
-  const el = document.getElementById(`settings-backup-${kind}-status`);
+type ImportResponse = {
+  applied?: number;
+  instanceApplied?: number;
+  reposAdded?: number;
+  extensionsInstalled?: number;
+  extensionsFailed?: string[];
+  aliasesRestored?: number;
+  shortcutsRestored?: number;
+  failedStages?: string[];
+  error?: string;
+  code?: BackupError;
+};
+type ParsedFile =
+  | { ok: true; backup: object }
+  | { ok: false; reason: BackupError };
+
+const _status = (text: string): void => {
+  const el = document.getElementById("settings-backup-status");
   if (el) el.textContent = text;
 };
 
-const _fail = (kind: BackupKind, messageKey: string, statusText?: string): void => {
-  _status(kind, statusText ?? t(messageKey));
+const _fail = (messageKey: string): void => {
+  _status(t(messageKey));
   flashError(t(messageKey));
 };
 
 const _fallbackFilename = (): string =>
   `degoog-settings-${new Date().toISOString().slice(0, 10)}.json`;
 
-// RFC 5987 filename* wins; quoted filename is the ASCII fallback.
 const _filenameFrom = (disposition: string | null, fallback: string): string => {
   const encoded = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
   if (encoded) {
     try {
       return decodeURIComponent(encoded);
-    } catch {
-      /* fall through to the plain filename */
+    } catch (err) {
+      console.debug("[settings] undecodable backup filename, using the plain one", err);
     }
   }
   return disposition?.match(/filename="([^"]+)"/i)?.[1] ?? fallback;
 };
 
-// Revoking straight away cancels the download.
 const _saveBlob = (blob: Blob, filename: string): void => {
   const href = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -70,11 +105,15 @@ const _bindExport = (getToken: () => string | null): void => {
 
   btn.addEventListener("click", async () => {
     btn.disabled = true;
-    _status("export", t("settings-page.server.backup.exporting"));
+    _status(t(KEY.Exporting));
     try {
       const res = await fetch(`${getBase()}/api/settings/export`, {
         headers: authHeaders(getToken),
       });
+      if (res.status === TOO_LARGE_STATUS) {
+        _fail(KEY.ExportTooLarge);
+        return;
+      }
       if (!res.ok) throw new Error(`export failed: ${res.status}`);
       const blob = await res.blob();
       const filename = _filenameFrom(
@@ -85,41 +124,57 @@ const _bindExport = (getToken: () => string | null): void => {
         blob.type ? blob : new Blob([blob], { type: JSON_TYPE }),
         filename,
       );
-      _status("export", t("settings-page.server.backup.exported"));
-      flashSuccess(t("settings-page.server.backup.exported"));
+      _status(t(KEY.Exported));
+      flashSuccess(t(KEY.Exported));
     } catch (err) {
       console.warn("[settings] settings export failed", err);
-      _fail("export", "settings-page.server.backup.export-failed");
+      _fail(KEY.ExportFailed);
     } finally {
       btn.disabled = false;
     }
   });
 };
 
-const _parseBackup = async (file: File): Promise<object | null> => {
-  if (file.size > MAX_BACKUP_BYTES) return null;
+const _parseBackup = async (file: File): Promise<ParsedFile> => {
+  if (file.size > MAX_SETTINGS_BACKUP_BYTES)
+    return { ok: false, reason: BackupError.TooLarge };
   try {
     const parsed: unknown = JSON.parse(await file.text());
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-      return null;
-    return parsed;
+      return { ok: false, reason: BackupError.Unrecognised };
+    return { ok: true, backup: parsed };
   } catch (err) {
     console.debug("[settings] backup file is not JSON", err);
-    return null;
+    return { ok: false, reason: BackupError.InvalidJson };
   }
 };
+
+const _keyFor = (code?: BackupError): string =>
+  ERROR_KEYS[code as BackupError] ?? KEY.ImportFailed;
+
+const _countFailed = (data: ImportResponse): number =>
+  (data.failedStages?.length ?? 0) + (data.extensionsFailed?.length ?? 0);
 
 const _importedText = (data: ImportResponse): string => {
   const count = String(data.applied ?? 0);
   const repos = data.reposAdded ?? 0;
   const extensions = data.extensionsInstalled ?? 0;
-  if (!repos && !extensions)
-    return t("settings-page.server.backup.imported", { count });
-  return t("settings-page.server.backup.imported-extensions", {
+  const failed = _countFailed(data);
+  if (failed > 0)
+    return t(KEY.ImportedPartial, { count, failed: String(failed) });
+  if (!repos && !extensions) return t(KEY.Imported, { count });
+  return t(KEY.ImportedExtensions, {
     count,
     repos: String(repos),
     extensions: String(extensions),
   });
+};
+
+const _announce = (data: ImportResponse): void => {
+  const text = _importedText(data);
+  _status(text);
+  if (_countFailed(data) > 0) flashError(text);
+  else flashSuccess(t(KEY.ImportedReloading));
 };
 
 const _bindImport = (getToken: () => string | null): void => {
@@ -131,7 +186,7 @@ const _bindImport = (getToken: () => string | null): void => {
 
   const upload = initFileUpload(panel, (file) => {
     btn.disabled = !file;
-    _status("import", "");
+    _status("");
   });
   if (!upload) return;
 
@@ -139,41 +194,38 @@ const _bindImport = (getToken: () => string | null): void => {
     const file = upload.file();
     if (!file) return;
 
-    const backup = await _parseBackup(file);
-    if (!backup) {
-      _fail("import", "settings-page.server.backup.import-invalid");
+    const parsed = await _parseBackup(file);
+    if (!parsed.ok) {
+      _fail(ERROR_KEYS[parsed.reason]);
       return;
     }
 
     const confirmed = await confirmModal({
-      title: t("settings-page.server.backup.import-button"),
-      message: t("settings-page.server.backup.import-confirm"),
+      title: t(KEY.ImportButton),
+      message: t(KEY.ImportConfirm),
     });
     if (!confirmed) return;
 
     btn.disabled = true;
-    _status("import", t("settings-page.server.backup.importing"));
+    _status(t(KEY.Importing));
     try {
       const res = await fetch(`${getBase()}/api/settings/import`, {
         method: "POST",
         headers: jsonHeaders(getToken),
-        body: JSON.stringify(backup),
+        body: JSON.stringify(parsed.backup),
       });
       const data = (await res.json().catch(() => ({}))) as ImportResponse;
       if (!res.ok) {
-        _fail("import", "settings-page.server.backup.import-failed", data.error);
+        _fail(_keyFor(data.code));
         return;
       }
       upload.reset();
-      _status("import", _importedText(data));
-      flashSuccess(t("settings-page.server.backup.imported-reloading"));
-      // Server is live this page still has its old CSS, theme and fields.
+      _announce(data);
       setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch (err) {
       console.warn("[settings] settings import failed", err);
-      _fail("import", "settings-page.server.backup.import-failed");
+      _fail(KEY.ImportFailed);
     } finally {
-      // Success resets the picker, so the button re-disables.
       btn.disabled = !upload.file();
     }
   });

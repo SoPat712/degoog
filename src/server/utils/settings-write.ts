@@ -5,8 +5,16 @@ import {
   type ServerSettingValue,
 } from "./server-settings";
 import { SETTINGS_SCHEMA, coerceSetting } from "./settings-schema";
-import { isDomainListKey, writeDomainList } from "./domain-lists";
-import { isIndexerListKey, writeIndexerList } from "../indexer/config/lists";
+import {
+  isDomainListKey,
+  readDomainLists,
+  writeDomainList,
+} from "./domain-lists";
+import {
+  isIndexerListKey,
+  readIndexerLists,
+  writeIndexerList,
+} from "../indexer/config/lists";
 import { syncBlocklist } from "./bot-trap";
 import { startQueue, stopQueue } from "../indexer/queue";
 import { ReloadMode, reloadSync } from "../extensions/store/reload-sync";
@@ -85,11 +93,35 @@ const _schemaUpdates = (
   for (const [key, def] of Object.entries(SETTINGS_SCHEMA)) {
     const raw = body[key];
     if (typeof raw !== "string") continue;
-    // List fields go to their own stores via _persistListFields.
     if (isListField(key)) continue;
     updates[key] = coerceSetting(def, raw);
   }
   return updates;
+};
+
+const _compatToggled = (
+  updates: Record<string, string | boolean>,
+  existing: Record<string, ServerSettingValue>,
+): boolean =>
+  COMPAT_SETTING_KEYS.some(
+    (key) =>
+      key in updates && asBoolean(updates[key]) !== asBoolean(existing[key]),
+  );
+
+const _runSettingsExclusive = createMutex();
+
+const _listSnapshot = async (
+  body: Record<string, string>,
+): Promise<Record<string, string>> => {
+  const stored: Record<string, string> = {
+    ...(await readIndexerLists()),
+    ...(await readDomainLists()),
+  };
+  const snapshot: Record<string, string> = {};
+  for (const key of LIST_FIELDS) {
+    if (typeof body[key] === "string") snapshot[key] = stored[key] ?? "";
+  }
+  return snapshot;
 };
 
 const _persistListFields = async (
@@ -101,30 +133,45 @@ const _persistListFields = async (
   }
 };
 
-// Only a flag that actually flipped earns an engine reload.
-const _compatToggled = (
-  updates: Record<string, string | boolean>,
-  existing: Record<string, ServerSettingValue>,
-): boolean =>
-  COMPAT_SETTING_KEYS.some(
-    (key) =>
-      key in updates && asBoolean(updates[key]) !== asBoolean(existing[key]),
-  );
+const _rollback = async (
+  scalars: Record<string, ServerSettingValue>,
+  lists: Record<string, string>,
+): Promise<void> => {
+  try {
+    await setInstanceSettings(scalars);
+  } catch (err) {
+    logger.error("settings", "could not roll back the settings file", err);
+  }
+  for (const [key, value] of Object.entries(lists)) {
+    try {
+      await writeListField(key, value);
+    } catch (err) {
+      logger.error("settings", `could not roll back the ${key} list`, err);
+    }
+  }
+};
 
-// Serializes concurrent saves (settings form, backup import) so they don't clobber each other.
-const _runSettingsExclusive = createMutex();
+export type AfterBatch = () => Promise<void>;
 
-// Shared with the settings form; merges, so a partial body is safe.
 export const applySettingsBatch = async (
   body: Record<string, string>,
+  after?: AfterBatch,
 ): Promise<SettingsSaveResult> => {
   const { updates, existing } = await _runSettingsExclusive(async () => {
     const before = await getInstanceSettings();
+    const lists = await _listSnapshot(body);
     const next = _schemaUpdates(body);
-    await setInstanceSettings({ ...before, ...next });
+    try {
+      await setInstanceSettings({ ...before, ...next });
+      await _persistListFields(body);
+      if (after) await after();
+    } catch (err) {
+      logger.error("settings", "settings write failed, rolling back", err);
+      await _rollback(before, lists);
+      throw err;
+    }
     return { updates: next, existing: before };
   });
-  await _persistListFields(body);
   await syncBlocklist();
   const indexerUp = await reconcileIndexerQueue();
   const toggled = _compatToggled(updates, existing);

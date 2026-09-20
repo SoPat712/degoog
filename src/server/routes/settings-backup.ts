@@ -1,142 +1,179 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { guardSettingsRoute } from "./settings-auth";
-import { getInstanceSettings } from "../utils/server-settings";
-import { readDomainLists } from "../utils/domain-lists";
-import { readIndexerLists } from "../indexer/config/lists";
-import { SETTINGS_SCHEMA } from "../utils/settings-schema";
-import { applySettingsBatch } from "../utils/settings-write";
+import {
+  applySettingsBatch,
+  type SettingsSaveResult,
+} from "../utils/settings-write";
+import { applyInstance } from "../utils/settings-backup-instance";
+import {
+  restoreExtensions,
+  type ExtensionsRestoreResult,
+} from "../utils/settings-backup-extensions";
+import { applyAliases } from "../utils/settings-backup-aliases";
+import { applySources } from "../utils/settings-backup-shortcuts";
+import {
+  buildBackup,
+  isEmptyBackup,
+  parseBackup,
+  type BackupContents,
+} from "../utils/settings-backup-format";
 import { logger } from "../utils/logger";
 import {
-  collectExtensions,
-  readExtensionsBackup,
-  restoreExtensions,
-  type ExtensionsBackup,
-} from "../utils/settings-backup-extensions";
-import { MAX_SETTINGS_BACKUP_BYTES } from "../../shared/settings-backup";
+  BackupError,
+  BackupStage,
+  MAX_SETTINGS_BACKUP_BYTES,
+  weigh,
+} from "../../shared/settings-backup";
 
 const router = new Hono();
 
-const BACKUP_KIND = "degoog-settings";
-const BACKUP_VERSION = 2;
+const TAG = "settings-backup";
 
-type SettingsBackup = {
-  kind: typeof BACKUP_KIND;
-  version: number;
-  exportedAt: string;
-  settings: Record<string, string>;
-  extensions: ExtensionsBackup;
-};
-
-const _isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const _asText = (value: unknown): string | null => {
-  if (typeof value === "string") return value;
-  if (typeof value === "boolean" || typeof value === "number")
-    return String(value);
-  return null;
-};
-
-// Schema filter keeps apiSecretKey and instanceId out of the file.
-const _collectSettings = async (): Promise<Record<string, string>> => {
-  const merged: Record<string, unknown> = {
-    ...(await getInstanceSettings()),
-    ...(await readIndexerLists()),
-    ...(await readDomainLists()),
-  };
-  const out: Record<string, string> = {};
-  for (const key of Object.keys(SETTINGS_SCHEMA)) {
-    const value = _asText(merged[key]);
-    if (value !== null) out[key] = value;
-  }
-  return out;
-};
-
-const _readBackup = (
-  body: Record<string, unknown>,
-): { settings: Record<string, string>; extensions: ExtensionsBackup } | null => {
-  if (body.kind !== BACKUP_KIND) return null;
-  // A newer file could hold keys this build would mangle.
-  if (
-    !Number.isInteger(body.version) ||
-    (body.version as number) < 1 ||
-    (body.version as number) > BACKUP_VERSION
-  )
-    return null;
-  if (!_isRecord(body.settings)) return null;
-  const settings: Record<string, string> = {};
-  for (const [key, value] of Object.entries(body.settings)) {
-    if (!(key in SETTINGS_SCHEMA)) continue;
-    const text = _asText(value);
-    if (text !== null) settings[key] = text;
-  }
-  return { settings, extensions: readExtensionsBackup(body.extensions) };
+type RestoreTally = {
+  instanceApplied: number;
+  reposAdded: number;
+  extensionsInstalled: number;
+  extensionsFailed: string[];
+  aliasesRestored: number;
+  shortcutsRestored: number;
+  failedStages: BackupStage[];
 };
 
 const _filename = (): string =>
   `degoog-settings-${new Date().toISOString().slice(0, 10)}.json`;
 
+const _tooLarge = (bytes: number): boolean =>
+  bytes > MAX_SETTINGS_BACKUP_BYTES;
+
 router.get("/api/settings/export", async (c) => {
   const denied = await guardSettingsRoute(c, "GET /api/settings/export");
   if (denied) return denied;
-  const backup: SettingsBackup = {
-    kind: BACKUP_KIND,
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    settings: await _collectSettings(),
-    extensions: await collectExtensions(),
-  };
-  const body = JSON.stringify(backup, null, 2);
+
+  const body = JSON.stringify(await buildBackup(), null, 2);
+  const bytes = weigh(body);
+  if (_tooLarge(bytes)) {
+    logger.error(
+      TAG,
+      `refusing to export ${bytes} bytes; the limit both ends agree on is ${MAX_SETTINGS_BACKUP_BYTES}`,
+    );
+    return c.json({ error: "Backup too large", code: BackupError.TooLarge }, 413);
+  }
+
   const name = _filename();
   return c.body(body, 200, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Disposition": `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(name)}`,
-    // Byte length, not string length: lists and CSS can be non-ASCII.
-    "Content-Length": String(new TextEncoder().encode(body).byteLength),
+    "Content-Length": String(bytes),
     "Cache-Control": "no-store",
   });
 });
 
-router.post("/api/settings/import", async (c) => {
-  const denied = await guardSettingsRoute(c, "POST /api/settings/import");
-  if (denied) return denied;
-
-  const raw = await c.req.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_SETTINGS_BACKUP_BYTES)
-    return c.json({ error: "Backup too large" }, 413);
-
-  let body: Record<string, unknown> | null;
+const _stage = async <T>(
+  stage: BackupStage,
+  failed: BackupStage[],
+  fallback: T,
+  run: () => Promise<T>,
+): Promise<T> => {
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    body =
-      parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : null;
-  } catch {
-    body = null;
+    return await run();
+  } catch (err) {
+    logger.error(TAG, `restoring ${stage} from a backup failed`, err);
+    failed.push(stage);
+    return fallback;
   }
-  if (!body) return c.json({ error: "Invalid JSON" }, 400);
+};
 
-  const backup = _readBackup(body);
-  if (!backup) return c.json({ error: "Not a Degoog settings backup" }, 400);
-
-  const { settings, extensions } = backup;
-  const applied = Object.keys(settings).length;
-  const hasExtensions =
-    extensions.repos.length > 0 ||
-    extensions.installed.length > 0 ||
-    Object.keys(extensions.settings).length > 0 ||
-    extensions.defaultEngines !== null;
-  if (applied === 0 && !hasExtensions)
-    return c.json({ error: "Backup has no settings this build knows" }, 400);
-
-  const result = await applySettingsBatch(settings);
-  const restored = await restoreExtensions(extensions);
-  logger.info(
-    "settings-backup",
-    `restored ${applied} settings, ${restored.reposAdded} repos and ${restored.extensionsInstalled} extensions from a backup`,
+const _restoreRest = async (
+  backup: BackupContents,
+  instanceApplied: number,
+): Promise<RestoreTally> => {
+  const failedStages: BackupStage[] = [];
+  const extensions = await _stage<ExtensionsRestoreResult>(
+    BackupStage.Extensions,
+    failedStages,
+    { reposAdded: 0, extensionsInstalled: 0, extensionsFailed: [] },
+    () => restoreExtensions(backup.extensions),
   );
-  return c.json({ ...result, ...restored, applied });
-});
+  const aliasesRestored = await _stage(BackupStage.Aliases, failedStages, 0, () =>
+    applyAliases(backup.aliases),
+  );
+  const shortcutsRestored = await _stage(
+    BackupStage.Shortcuts,
+    failedStages,
+    0,
+    () => applySources(backup.shortcutSources),
+  );
+  return {
+    instanceApplied,
+    aliasesRestored,
+    shortcutsRestored,
+    failedStages,
+    ...extensions,
+  };
+};
+
+router.post(
+  "/api/settings/import",
+  bodyLimit({
+    maxSize: MAX_SETTINGS_BACKUP_BYTES,
+    onError: (c) =>
+      c.json({ error: "Backup too large", code: BackupError.TooLarge }, 413),
+  }),
+  async (c) => {
+    const denied = await guardSettingsRoute(c, "POST /api/settings/import");
+    if (denied) return denied;
+
+    const raw = await c.req.text();
+    if (_tooLarge(weigh(raw)))
+      return c.json({ error: "Backup too large", code: BackupError.TooLarge }, 413);
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      logger.warn(TAG, "import body is not JSON", err);
+      return c.json({ error: "Invalid JSON", code: BackupError.InvalidJson }, 400);
+    }
+
+    const backup = parseBackup(parsed);
+    if (!backup)
+      return c.json(
+        { error: "Not a Degoog settings backup", code: BackupError.Unrecognised },
+        400,
+      );
+    if (isEmptyBackup(backup))
+      return c.json(
+        { error: "Backup has nothing this build knows", code: BackupError.Empty },
+        400,
+      );
+
+    const applied = Object.keys(backup.settings).length;
+    let instanceApplied = 0;
+    let result: SettingsSaveResult;
+    try {
+      result = await applySettingsBatch(backup.settings, async () => {
+        instanceApplied = await applyInstance(backup.instance);
+      });
+    } catch (err) {
+      logger.error(TAG, "settings restore failed and was rolled back", err);
+      return c.json(
+        {
+          error: "Could not write the settings",
+          code: BackupError.WriteFailed,
+          failedStages: [BackupStage.Settings],
+        },
+        500,
+      );
+    }
+
+    const tally = await _restoreRest(backup, instanceApplied);
+    logger.info(
+      TAG,
+      `restored ${applied} settings, ${tally.instanceApplied} instance defaults, ${tally.reposAdded} repos, ${tally.extensionsInstalled} extensions, ${tally.aliasesRestored} aliases and ${tally.shortcutsRestored} shortcuts from a backup`,
+    );
+    return c.json({ ...result, ...tally, applied });
+  },
+);
 
 export default router;

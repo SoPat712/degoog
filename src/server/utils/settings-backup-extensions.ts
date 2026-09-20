@@ -12,11 +12,14 @@ import {
   setSettings,
   type SettingValue,
 } from "./plugin-settings";
+import { clearShortcutsSettingsCache } from "./shortcuts-settings";
 import { defaultEnginesFile } from "./paths";
 import { writeJsonAtomic } from "./atomic-json";
 import { logger } from "./logger";
+import { isRecord } from "../../shared/settings-backup";
 
 const TAG = "settings-backup";
+const MARKER_PREFIX = "__";
 
 export type BackupExtensionItem = {
   repoUrl: string;
@@ -28,7 +31,6 @@ export type ExtensionsBackup = {
   repos: string[];
   installed: BackupExtensionItem[];
   settings: Record<string, Record<string, SettingValue>>;
-  // null when the file said nothing; an empty map means "no overrides" and clears them.
   defaultEngines: Record<string, boolean> | null;
 };
 
@@ -38,27 +40,23 @@ export type ExtensionsRestoreResult = {
   extensionsFailed: string[];
 };
 
-const _isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 const _isSettingValue = (value: unknown): value is SettingValue =>
   typeof value === "string" ||
   typeof value === "boolean" ||
   (Array.isArray(value) && value.every((v) => typeof v === "string"));
 
-// `__`-prefixed keys are migration markers, not an extension's settings.
 const _extensionSettings = (
   store: Record<string, Record<string, SettingValue>>,
 ): Record<string, Record<string, SettingValue>> =>
   Object.fromEntries(
-    Object.entries(store).filter(([id]) => !id.startsWith("__")),
+    Object.entries(store).filter(([id]) => !id.startsWith(MARKER_PREFIX)),
   );
 
 const _itemKey = (item: BackupExtensionItem): string =>
   `${normalizeRepoUrl(item.repoUrl)}::${item.type}::${item.itemPath.replace(/\/$/, "")}`;
 
 const _readEngineMap = (value: unknown): Record<string, boolean> => {
-  if (!_isRecord(value)) return {};
+  if (!isRecord(value)) return {};
   return Object.fromEntries(
     Object.entries(value).filter(
       (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
@@ -66,7 +64,6 @@ const _readEngineMap = (value: unknown): Record<string, boolean> => {
   );
 };
 
-// The overrides file only, so an engine this instance never touched keeps the target's default.
 const _readDefaultEngines = async (): Promise<Record<string, boolean>> => {
   try {
     const raw = await readFile(defaultEnginesFile(), "utf-8");
@@ -77,7 +74,6 @@ const _readDefaultEngines = async (): Promise<Record<string, boolean>> => {
   }
 };
 
-// readReposData, not getRepos: exporting must not bootstrap the official repo.
 export const collectExtensions = async (): Promise<ExtensionsBackup> => {
   const data = await readReposData();
   return {
@@ -97,7 +93,7 @@ const _readItems = (value: unknown): BackupExtensionItem[] => {
   const types = new Set<string>(Object.values(ExtensionStoreType));
   return value.filter(
     (item): item is BackupExtensionItem =>
-      _isRecord(item) &&
+      isRecord(item) &&
       typeof item.repoUrl === "string" &&
       typeof item.itemPath === "string" &&
       typeof item.type === "string" &&
@@ -108,10 +104,10 @@ const _readItems = (value: unknown): BackupExtensionItem[] => {
 const _readSettings = (
   value: unknown,
 ): Record<string, Record<string, SettingValue>> => {
-  if (!_isRecord(value)) return {};
+  if (!isRecord(value)) return {};
   const out: Record<string, Record<string, SettingValue>> = {};
   for (const [id, values] of Object.entries(value)) {
-    if (id.startsWith("__") || !_isRecord(values)) continue;
+    if (id.startsWith(MARKER_PREFIX) || !isRecord(values)) continue;
     out[id] = Object.fromEntries(
       Object.entries(values).filter(([, v]) => _isSettingValue(v)),
     ) as Record<string, SettingValue>;
@@ -120,7 +116,7 @@ const _readSettings = (
 };
 
 export const readExtensionsBackup = (value: unknown): ExtensionsBackup => {
-  if (!_isRecord(value))
+  if (!isRecord(value))
     return { repos: [], installed: [], settings: {}, defaultEngines: null };
   return {
     repos: Array.isArray(value.repos)
@@ -128,11 +124,17 @@ export const readExtensionsBackup = (value: unknown): ExtensionsBackup => {
       : [],
     installed: _readItems(value.installed),
     settings: _readSettings(value.settings),
-    defaultEngines: _isRecord(value.defaultEngines)
+    defaultEngines: isRecord(value.defaultEngines)
       ? _readEngineMap(value.defaultEngines)
       : null,
   };
 };
+
+export const hasExtensions = (backup: ExtensionsBackup): boolean =>
+  backup.repos.length > 0 ||
+  backup.installed.length > 0 ||
+  Object.keys(backup.settings).length > 0 ||
+  backup.defaultEngines !== null;
 
 const _restoreRepos = async (urls: string[]): Promise<number> => {
   const { repos } = await readReposData();
@@ -182,14 +184,20 @@ const _restoreDefaultEngines = async (
   await writeJsonAtomic(defaultEnginesFile(), overrides);
 };
 
-// Settings land before the install so a freshly loaded extension reads them straight away.
-export const restoreExtensions = async (
-  backup: ExtensionsBackup,
-): Promise<ExtensionsRestoreResult> => {
-  for (const [id, values] of Object.entries(backup.settings)) {
+const _restoreSettings = async (
+  settings: Record<string, Record<string, SettingValue>>,
+): Promise<void> => {
+  for (const [id, values] of Object.entries(settings)) {
     await setSettings(id, values);
     await syncExtSettings(id, values);
   }
+  if (Object.keys(settings).length > 0) clearShortcutsSettingsCache();
+};
+
+export const restoreExtensions = async (
+  backup: ExtensionsBackup,
+): Promise<ExtensionsRestoreResult> => {
+  await _restoreSettings(backup.settings);
   await _restoreDefaultEngines(backup.defaultEngines);
   const reposAdded = await _restoreRepos(backup.repos);
   return { reposAdded, ...(await _restoreItems(backup.installed)) };

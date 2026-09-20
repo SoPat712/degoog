@@ -22,6 +22,9 @@ const _renderRestartSection = (): string => `
     </button>
   </section>`;
 
+const _note = (key: string): string =>
+  `<p class="settings-desc settings-backup-note">${escapeHtml(t(key))}</p>`;
+
 const _subheading = (key: string): string =>
   `<h3 class="settings-subheading">${escapeHtml(t(key))}</h3>`;
 
@@ -59,38 +62,26 @@ const _presetsBlock = (): string => `
     </div>
   </div>`;
 
-const _backupItem = (kind: "export" | "import", body: string): string => `
-  <div class="settings-backup-item">
-    <h4 class="settings-backup-item-title">${escapeHtml(t(`settings-page.server.backup.${kind}-heading`))}</h4>
-    ${_desc(`settings-page.server.backup.${kind}-desc`)}
-    ${body}
-    <span class="settings-server-preset-status" id="settings-backup-${kind}-status" role="status" aria-live="polite"></span>
-  </div>`;
-
-const _exportControls = (): string => `
-  <button class="btn btn--secondary degoog-btn degoog-btn--secondary settings-backup-action" id="settings-backup-export" type="button">
-    ${escapeHtml(t("settings-page.server.backup.export-button"))}
-  </button>`;
-
-const _importControls = (): string => `
-  ${renderFileUpload({
-    inputId: "settings-backup-file",
-    buttonLabel: t("settings-page.server.backup.import-choose"),
-    dropLabel: t("settings-page.server.backup.import-drop"),
-    accept: "application/json,.json",
-  })}
-  <button class="btn btn--primary degoog-btn degoog-btn--primary settings-backup-action" id="settings-backup-import" type="button" disabled>
-    ${escapeHtml(t("settings-page.server.backup.import-button"))}
-  </button>`;
-
 const _backupBlock = (): string => `
   <div class="settings-server-block" id="settings-server-backup">
     ${_subheading("settings-page.server.config.backup-label")}
     ${_desc("settings-page.server.backup.desc")}
-    <div class="settings-backup-grid">
-      ${_backupItem("export", _exportControls())}
-      ${_backupItem("import", _importControls())}
+    ${_note("settings-page.server.backup.manual-extensions")}
+    <div class="settings-backup-row">
+      <button class="btn btn--secondary degoog-btn degoog-btn--secondary settings-backup-action" id="settings-backup-export" type="button">
+        ${escapeHtml(t("settings-page.server.backup.export-button"))}
+      </button>
+      ${renderFileUpload({
+        inputId: "settings-backup-file",
+        buttonLabel: t("settings-page.server.backup.import-choose"),
+        dropLabel: t("settings-page.server.backup.import-drop"),
+        accept: "application/json,.json",
+      })}
+      <button class="btn btn--primary degoog-btn degoog-btn--primary settings-backup-action" id="settings-backup-import" type="button" disabled>
+        ${escapeHtml(t("settings-page.server.backup.import-button"))}
+      </button>
     </div>
+    <span class="settings-server-preset-status" id="settings-backup-status" role="status" aria-live="polite"></span>
   </div>`;
 
 const _renderConfigSection = (): string => `
