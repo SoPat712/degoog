@@ -42,6 +42,7 @@ export type ServerSettingsData = {
   searxCompatEnabled?: BoolSetting;
   searxApiEnabled?: BoolSetting;
   fourgetCompatEnabled?: BoolSetting;
+  engineOriginDisplay?: string;
 };
 
 export type ButtonStateHandler = (

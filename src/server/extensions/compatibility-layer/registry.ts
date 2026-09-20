@@ -30,6 +30,7 @@ export interface CompatEntry {
   displayName: string;
   searchTypes: string[];
   description?: string;
+  site?: string;
   instance: SearchEngine;
   disabledByDefault?: boolean;
   source?: "plugin" | "builtin";

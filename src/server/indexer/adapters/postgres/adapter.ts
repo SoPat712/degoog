@@ -10,6 +10,7 @@ import type { IndexRow } from "../../recorders";
 import type { IndexerConfig } from "../../types/config";
 import { safeSlug } from "../../shared/safe-type";
 import { rankFields } from "../../shared/rank-fields";
+import { canPrefix, splitTerms } from "../../shared/terms";
 import { logger } from "../../../utils/logger";
 import { initPgSchema } from "./schema";
 import { runPgPrune } from "./prune";
@@ -294,25 +295,27 @@ export class PgAdapter implements IndexerAdapter {
     offset = 0,
   ): Promise<UrlRow[]> {
     const schema = safeSlug(type);
-    const pgExpr = queryNorm
-      .split(/\s+/)
-      .filter((t) => t.length >= 2)
-      .map((t) => t.replace(/[^a-z0-9]/g, ""))
-      .filter(Boolean)
-      .map((t) => `${t}:*`)
+    const pgExpr = splitTerms(queryNorm)
+      .map((t) => (canPrefix(t) ? `${t.token}:*` : t.token))
       .join(" & ");
     if (!pgExpr) return [];
     try {
       return await this._sql<UrlRow[]>`
-        SELECT u.url, u.source_engine, u.title, u.snippet, u.thumbnail,
-               u.image_url, u.is_gif, u.duration, u.extras_json
-        FROM ${this._sql(schema)}.urls u
-        JOIN ${this._sql(schema)}.query_hits h ON h.url_id = u.id
-        WHERE u.search_vec @@ to_tsquery('simple', ${pgExpr})
-          AND h.engine_type = ${type}
-          AND h.query_norm != ${queryNorm}
-        ORDER BY ts_rank(u.search_vec, to_tsquery('simple', ${pgExpr})) DESC,
-                 h.last_seen DESC
+        SELECT d.url, d.source_engine, d.title, d.snippet, d.thumbnail,
+               d.image_url, d.is_gif, d.duration, d.extras_json
+        FROM (
+          SELECT DISTINCT ON (u.id)
+                 u.id, u.url, u.source_engine, u.title, u.snippet, u.thumbnail,
+                 u.image_url, u.is_gif, u.duration, u.extras_json, h.last_seen,
+                 ts_rank(u.search_vec, to_tsquery('simple', ${pgExpr})) AS rank_score
+          FROM ${this._sql(schema)}.urls u
+          JOIN ${this._sql(schema)}.query_hits h ON h.url_id = u.id
+          WHERE u.search_vec @@ to_tsquery('simple', ${pgExpr})
+            AND h.engine_type = ${type}
+            AND h.query_norm != ${queryNorm}
+          ORDER BY u.id, h.last_seen DESC
+        ) d
+        ORDER BY d.rank_score DESC, d.last_seen DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
     } catch (err) {

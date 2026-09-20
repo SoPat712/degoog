@@ -33,6 +33,8 @@ const TOGGLE_KEYS = [
   "fourget-compat-enabled",
 ] as const;
 
+const SELECT_IDS = ["engine-origin-display"] as const;
+
 const RL_SEARCH_KEYS = [
   "rateLimitBurstWindow",
   "rateLimitBurstMax",
@@ -80,6 +82,32 @@ export const bindToggleAutoSave = (getToken: () => string | null): void => {
         console.error("[auto-save] toggle save error", { key, err });
         input.checked = !prev;
         _syncVisibilityToggle(id, input.checked);
+        flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
+      }
+    });
+  }
+};
+
+export const bindSelectAutoSave = (getToken: () => string | null): void => {
+  for (const id of SELECT_IDS) {
+    const select = document.getElementById(`settings-${id}`) as HTMLSelectElement | null;
+    if (!select) continue;
+    const key = _toCamel(id);
+    let previous = select.value;
+    select.addEventListener("change", async () => {
+      try {
+        const ok = await saveField(key, select.value, getToken);
+        if (!ok) {
+          console.error("[auto-save] select save failed", { key });
+          select.value = previous;
+          flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
+          return;
+        }
+        previous = select.value;
+        flashSuccess(window.scopedT("core")("settings-page.server.saved"));
+      } catch (err) {
+        console.error("[auto-save] select save error", { key, err });
+        select.value = previous;
         flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
       }
     });

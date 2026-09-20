@@ -1,6 +1,7 @@
 import { escapeHtml } from "../../utils/dom";
 import { renderFileUpload } from "../../utils/file-upload";
 import { SERVER_SETTINGS_PRESETS } from "./presets";
+import { ENGINE_ORIGIN_DISPLAY_VALUES } from "../../../shared/engine-origins";
 
 const t = window.scopedT("core");
 
@@ -203,12 +204,28 @@ const _streamingBlock = (): string => `
     </fieldset>
   </div>`;
 
+const _engineOriginsBlock = (): string => {
+  const options = ENGINE_ORIGIN_DISPLAY_VALUES.map(
+    (value) =>
+      `<option value="${escapeHtml(value)}">${escapeHtml(t(`settings-page.server.engine-origins-${value}`))}</option>`,
+  ).join("");
+  return `
+  <div class="settings-server-block">
+    ${_subheading("settings-page.server.engine-origins-label")}
+    ${_desc("settings-page.server.engine-origins-desc")}
+    <div class="degoog-select-wrap">
+      <select id="settings-engine-origin-display" class="degoog-input" aria-label="${escapeHtml(t("settings-page.server.engine-origins-label"))}">${options}</select>
+    </div>
+  </div>`;
+};
+
 const _renderSearchOptionsSection = (): string => `
   <section class="settings-section ext-card degoog-panel degoog-panel--ext-card" id="settings-section-search-options">
     ${_h("settings-page.server.search-options-heading", "fa-solid fa-arrow-down-1-9")}
     ${_desc("settings-page.server.search-options-desc")}
     <fieldset class="settings-fieldset">
       ${_infiniteScrollBlock()}
+      ${_engineOriginsBlock()}
       ${_languagesBlock()}
       ${_streamingBlock()}
     </fieldset>

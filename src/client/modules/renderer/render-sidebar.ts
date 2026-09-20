@@ -65,11 +65,11 @@ export const engineStatsHtml = (timings: EngineTimingWithPage[]): string => {
     const metaText = `${countHtml}${failureText} · ${et.time}ms`;
     const action = isDegoog
       ? ""
-      : `<a class="engine-retry-link degoog-link" data-engine="${escapeHtml(et.name)}" data-page="${et.failedPage ?? state.currentPage}">${t("search-templates.sidebar.retry")}</a>`;
+      : `<a class="engine-retry-link degoog-link" data-engine="${escapeHtml(et.id ?? et.name)}" data-page="${et.failedPage ?? state.currentPage}">${t("search-templates.sidebar.retry")}</a>`;
     statsContent += `
       <div class="engine-stat-row${statusClass}">
         <div class="engine-stat-info">
-          <div class="engine-stat-label degoog-text">${originSlot(et.name)}${escapeHtml(et.name)}</div>
+          <div class="engine-stat-label degoog-text">${originSlot(et.name, et.id)}${escapeHtml(et.name)}</div>
           <div class="engine-stat-meta degoog-text degoog-text--sm degoog-text--secondary">${metaText}</div>
         </div>
         ${action}

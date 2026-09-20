@@ -1,8 +1,14 @@
+import {
+  DEFAULT_ENGINE_ORIGIN_DISPLAY,
+  ENGINE_ORIGIN_DISPLAY_VALUES,
+} from "../../shared/engine-origins";
+
 export type SettingKind = "string" | "boolean" | "number" | "lines";
 
 export interface SettingDef {
   kind: SettingKind;
   default: string | boolean;
+  values?: readonly string[];
 }
 
 export const SETTINGS_SCHEMA = {
@@ -62,6 +68,7 @@ export const SETTINGS_SCHEMA = {
   searxCompatEnabled:           { kind: "boolean", default: false },
   searxApiEnabled:              { kind: "boolean", default: false },
   fourgetCompatEnabled:         { kind: "boolean", default: false },
+  engineOriginDisplay:          { kind: "string",  default: DEFAULT_ENGINE_ORIGIN_DISPLAY, values: ENGINE_ORIGIN_DISPLAY_VALUES },
 } satisfies Record<string, SettingDef>;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
@@ -73,6 +80,8 @@ export const coerceSetting = (def: SettingDef, raw: string): string | boolean =>
       const n = Number(raw);
       return Number.isFinite(n) ? String(Math.trunc(n)) : String(def.default);
     }
-    default: return raw;
+    default:
+      if (def.values && !def.values.includes(raw)) return String(def.default);
+      return raw;
   }
 };

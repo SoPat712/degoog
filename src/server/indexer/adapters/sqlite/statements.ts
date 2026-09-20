@@ -100,7 +100,8 @@ export const FUZZY_SQL = `
   WHERE urls_fts MATCH ?
     AND h.engine_type = ?
     AND h.query_norm != ?
-  ORDER BY rank, h.last_seen DESC
+  GROUP BY u.id
+  ORDER BY rank, MAX(h.last_seen) DESC
   LIMIT ? OFFSET ?
 `;
 

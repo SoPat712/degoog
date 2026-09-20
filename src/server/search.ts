@@ -43,6 +43,7 @@ import {
 import { extractImageUrl } from "./utils/extract-image";
 import { getRandomUserAgent } from "./utils/user-agents";
 import { logger } from "./utils/logger";
+import { noteEngineHost } from "./extensions/engines/engine-hosts";
 import { reportEngineRun } from "./utils/run-observers";
 import { outgoingFetch, parseOutgoingTransport } from "./utils/outgoing";
 import {
@@ -269,6 +270,7 @@ export const createSearchEngineContext = (
     undefined;
   return {
     fetch: async (url, init) => {
+      noteEngineHost(engineSettingsId, typeof url === "string" ? url : String(url));
       let raw: string | undefined;
       let customUa = "";
       let proxyOverrideEnabled = false;
@@ -365,7 +367,7 @@ export const searchSingleEngine = async (
   if (!engine) {
     return {
       results: [],
-      timing: { name: engineName, time: 0, resultCount: 0, status: THREAT_LEVEL.BLOCKED },
+      timing: { name: engineName, id: engineName, time: 0, resultCount: 0, status: THREAT_LEVEL.BLOCKED },
     };
   }
   const p = sanePage(page);
@@ -401,7 +403,7 @@ export const searchSingleEngine = async (
         `cache hit engine="${engine.name}" results=${hit.timing.resultCount} status=${hit.timing.status ?? "ok"}`,
       );
       _tellObservers(hit.timing, engineSettingsId, scope, true);
-      return hit;
+      return { ...hit, timing: { ...hit.timing, id: engineSettingsId } };
     }
   }
 
@@ -432,6 +434,7 @@ export const searchSingleEngine = async (
       results,
       timing: {
         name: engine.name,
+        id: engineSettingsId,
         time: elapsed,
         resultCount: results.length,
         status: THREAT_LEVEL.OK,
@@ -447,7 +450,7 @@ export const searchSingleEngine = async (
     logger.warn("engine", `${engine.name} failed after ${elapsed}ms status=${classified.status}`, err);
     const run: CachedEngineRun = {
       results: [],
-      timing: { name: engine.name, time: elapsed, resultCount: 0, status: classified.status, errorReason: classified.reason, httpStatus: classified.httpStatus },
+      timing: { name: engine.name, id: engineSettingsId, time: elapsed, resultCount: 0, status: classified.status, errorReason: classified.reason, httpStatus: classified.httpStatus },
     };
     _tellObservers(run.timing, engineSettingsId, scope, false);
     await _keepRun(key, run);

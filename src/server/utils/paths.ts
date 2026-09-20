@@ -54,6 +54,9 @@ export const transportsDir = (): string =>
 export const aliasesFile = (): string =>
   process.env.DEGOOG_ALIASES_FILE ?? join(_dataDir(), "aliases.json");
 
+export const engineHostsFile = (): string =>
+  process.env.DEGOOG_ENGINE_HOSTS_FILE ?? join(_dataDir(), "engine-hosts.json");
+
 export const pluginSettingsFile = (): string =>
   process.env.DEGOOG_PLUGIN_SETTINGS_FILE ?? join(_dataDir(), "plugin-settings.json");
 

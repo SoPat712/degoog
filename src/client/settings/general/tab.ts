@@ -1,5 +1,6 @@
 import pkg from "../../../../package.json";
 import {
+  ENGINE_ORIGIN_DISPLAY,
   DISPLAY_ENGINE_PERFORMANCE,
   DISPLAY_SEARCH_SUGGESTIONS,
   INLINE_GIF_PLAYBACK,
@@ -11,7 +12,8 @@ import {
   SHOW_RESULT_DATES,
   THEME_KEY,
 } from "../../constants";
-import { idbGet, idbSet } from "../../utils/db";
+import { idbDel, idbGet, idbSet } from "../../utils/db";
+import { ENGINE_ORIGIN_DISPLAY_VALUES } from "../../../shared/engine-origins";
 import { resetDefaults, saveDefaults } from "../../utils/sync";
 import { SYNC_KEYS } from "../../../shared/sync";
 import { requestInstallPrompt } from "../../utils/install-prompt";
@@ -93,12 +95,30 @@ const renderAppearanceSection = (): string => {
   });
 };
 
+const INSTANCE_DEFAULT_VALUE = "";
+
+const renderEngineOriginSelect = (): string => {
+  const options = [INSTANCE_DEFAULT_VALUE, ...ENGINE_ORIGIN_DISPLAY_VALUES]
+    .map((value) => {
+      const key = value || "instance-default";
+      return `<option value="${escapeHtml(value)}">${escapeHtml(t(`settings-page.search-options.engine-origins-${key}`))}</option>`;
+    })
+    .join("");
+  return `
+    <div class="settings-engine-origin-wrap">
+      <label class="settings-proxy-urls-label" for="engine-origin-select">${escapeHtml(t("settings-page.search-options.engine-origins"))}</label>
+      <div class="degoog-select-wrap">
+        <select id="engine-origin-select" class="theme-select">${options}</select>
+      </div>
+    </div>`;
+};
+
 const renderSearchOptionsSection = (): string =>
   renderSection({
     icon: "fa-solid fa-magnifying-glass",
     headingKey: "settings-page.search-options.heading",
     fieldsetClass: "settings-toggle-grid",
-    content: SEARCH_OPTION_TOGGLES.map(renderCheckbox).join(""),
+    content: SEARCH_OPTION_TOGGLES.map(renderCheckbox).join("") + renderEngineOriginSelect(),
   });
 
 const renderSyncSection = (): string =>
@@ -198,7 +218,7 @@ const renderPublicSearchOptions = (): string =>
   renderSection({
     headingKey: "settings-page.search-options.heading",
     fieldsetClass: "settings-toggle-grid",
-    content: SEARCH_OPTION_TOGGLES.map(renderCheckbox).join(""),
+    content: SEARCH_OPTION_TOGGLES.map(renderCheckbox).join("") + renderEngineOriginSelect(),
   });
 
 export const renderGeneralContent = (): string =>
@@ -251,6 +271,22 @@ export async function initAppearanceSettings(): Promise<void> {
         console.debug("[settings] theme localStorage sync failed", err);
       }
       applyTheme(value);
+    });
+  }
+
+  const originSelect = document.getElementById("engine-origin-select") as HTMLSelectElement | null;
+
+  if (originSelect) {
+    const saved = await idbGet<string>(ENGINE_ORIGIN_DISPLAY);
+    originSelect.value =
+      saved && ENGINE_ORIGIN_DISPLAY_VALUES.includes(saved)
+        ? saved
+        : INSTANCE_DEFAULT_VALUE;
+    originSelect.addEventListener("change", async () => {
+      const value = originSelect.value;
+      if (value === INSTANCE_DEFAULT_VALUE) await idbDel(ENGINE_ORIGIN_DISPLAY);
+      else await idbSet(ENGINE_ORIGIN_DISPLAY, value);
+      window.dispatchEvent(new Event("extensions-saved"));
     });
   }
 

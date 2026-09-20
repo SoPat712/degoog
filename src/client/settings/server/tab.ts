@@ -11,11 +11,11 @@ import type {
 } from "../../types/settings-server";
 import { setIndexerNavVisible } from "../indexer/nav";
 import { initProxyTest } from "./proxy-test";
-import { bindToggle, el, setToggle, setVal, syncToggleWrap } from "./fields";
+import { bindToggle, el, setSelect, setToggle, setVal, syncToggleWrap } from "./fields";
 import { markOversized, oversizedMap } from "../shared/oversized";
 import { renderScoreRows, scoreRowTemplate } from "./domain-score";
 import { initHoneypot } from "./honeypot";
-import { bindToggleAutoSave, injectFieldSaveBtns } from "./auto-save";
+import { bindSelectAutoSave, bindToggleAutoSave, injectFieldSaveBtns } from "./auto-save";
 import { renderServerContent } from "./render";
 import { initBackupControls } from "./backup";
 import { flashError, flashSuccess } from "../shared/flash-msg";
@@ -181,6 +181,8 @@ async function _loadServerSettings(
     setToggle("honeypot-enabled", data.honeypotEnabled ?? "true");
     setToggle("honeypot-css-check", data.honeypotCssCheck ?? "true");
     setVal("honeypot-ban-duration", data.honeypotBanDuration);
+
+    setSelect("engine-origin-display", data.engineOriginDisplay);
 
     setToggle("searx-compat-enabled", data.searxCompatEnabled);
     setToggle("searx-api-enabled", data.searxApiEnabled);
@@ -553,6 +555,7 @@ export async function initServerTab(
   };
 
   bindToggleAutoSave(getToken);
+  bindSelectAutoSave(getToken);
   injectFieldSaveBtns(getToken);
   _initPresetControls(getToken);
   initBackupControls(getToken);

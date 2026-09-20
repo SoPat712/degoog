@@ -6,6 +6,18 @@ export enum EngineOriginKind {
   Compat = "compat",
 }
 
+export enum EngineOriginDisplay {
+  Favicon = "favicon",
+  Provenance = "provenance",
+  Off = "off",
+}
+
+export const ENGINE_ORIGIN_DISPLAY_VALUES: readonly string[] = Object.freeze(
+  Object.values(EngineOriginDisplay),
+);
+
+export const DEFAULT_ENGINE_ORIGIN_DISPLAY = EngineOriginDisplay.Favicon;
+
 export const ORIGIN_ICON_DIR = "/public/images/origins";
 
 export const CORE_ORIGIN_ICON = "/public/images/degoog-logo.svg";
@@ -19,9 +31,14 @@ export const COMPAT_ORIGIN_ICONS: Readonly<Record<CompatLayerId, string>> =
 
 export const CORE_ORIGIN_LABEL = "Degoog";
 
+export const isOriginDisplay = (value: unknown): value is EngineOriginDisplay =>
+  typeof value === "string" && ENGINE_ORIGIN_DISPLAY_VALUES.includes(value);
+
 export interface EngineOrigin {
   kind: EngineOriginKind;
   label: string;
   icon?: string;
   glyph?: string;
+  favicon?: string;
+  siteLabel?: string;
 }

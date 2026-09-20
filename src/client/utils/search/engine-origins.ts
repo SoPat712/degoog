@@ -1,44 +1,90 @@
-import type { EngineOrigin } from "../../../shared/engine-origins";
+import {
+  DEFAULT_ENGINE_ORIGIN_DISPLAY,
+  EngineOriginDisplay,
+  isOriginDisplay,
+  type EngineOrigin,
+} from "../../../shared/engine-origins";
+import { ENGINE_ORIGIN_DISPLAY } from "../../constants";
+import { idbGet } from "../db";
 import { escapeAttribute } from "../dom";
 import { getRegistry } from "../engines";
 import { onWindowEvent } from "../window-event";
+
+declare global {
+  interface Window {
+    __DEGOOG_ENGINE_ORIGINS__?: string;
+  }
+}
 
 const t = window.scopedT("themes/degoog");
 
 const PAINTED_FLAG = "true";
 
-let _origins: Map<string, EngineOrigin> | null = null;
-let _inflight: Promise<Map<string, EngineOrigin>> | null = null;
+interface OriginLookup {
+  byId: Map<string, EngineOrigin>;
+  byName: Map<string, EngineOrigin>;
+}
+
+let _lookup: OriginLookup | null = null;
+let _inflight: Promise<OriginLookup> | null = null;
+let _mode: EngineOriginDisplay | null = null;
 
 onWindowEvent("extensions-saved", () => {
-  _origins = null;
+  _lookup = null;
   _inflight = null;
+  _mode = null;
 });
 
-const _byName = async (): Promise<Map<string, EngineOrigin>> => {
-  if (_origins) return _origins;
+const _instanceMode = (): EngineOriginDisplay => {
+  const value = window.__DEGOOG_ENGINE_ORIGINS__;
+  return isOriginDisplay(value) ? value : DEFAULT_ENGINE_ORIGIN_DISPLAY;
+};
+
+const _displayMode = async (): Promise<EngineOriginDisplay> => {
+  if (_mode) return _mode;
+  try {
+    const saved = await idbGet<string>(ENGINE_ORIGIN_DISPLAY);
+    _mode = isOriginDisplay(saved) ? saved : _instanceMode();
+  } catch (err) {
+    console.warn("[origins] could not read the display preference", err);
+    _mode = _instanceMode();
+  }
+  return _mode;
+};
+
+const _emptyLookup = (): OriginLookup => ({
+  byId: new Map<string, EngineOrigin>(),
+  byName: new Map<string, EngineOrigin>(),
+});
+
+const _lookupOrigins = async (): Promise<OriginLookup> => {
+  if (_lookup) return _lookup;
   if (!_inflight) {
     _inflight = getRegistry()
       .then((registry) => {
-        const map = new Map<string, EngineOrigin>();
+        const found = _emptyLookup();
         registry.engines.forEach((engine) => {
-          if (engine.origin) map.set(engine.displayName.toLowerCase(), engine.origin);
+          if (!engine.origin) return;
+          found.byId.set(engine.id, engine.origin);
+          found.byName.set(engine.displayName.toLowerCase(), engine.origin);
         });
-        _origins = map;
+        _lookup = found;
         _inflight = null;
-        return map;
+        return found;
       })
       .catch((err) => {
         console.warn("[origins] engine registry lookup failed", err);
         _inflight = null;
-        return new Map<string, EngineOrigin>();
+        return _emptyLookup();
       });
   }
   return _inflight;
 };
 
-export const originSlot = (engineName: string): string =>
-  `<span class="engine-origin" data-engine="${escapeAttribute(engineName)}"></span>`;
+export const originSlot = (engineName: string, engineId?: string): string => {
+  const idAttr = engineId ? ` data-engine-id="${escapeAttribute(engineId)}"` : "";
+  return `<span class="engine-origin" data-engine="${escapeAttribute(engineName)}"${idAttr}></span>`;
+};
 
 const _glyph = (origin: EngineOrigin): HTMLElement => {
   const glyph = document.createElement("i");
@@ -46,23 +92,52 @@ const _glyph = (origin: EngineOrigin): HTMLElement => {
   return glyph;
 };
 
-const _image = (slot: HTMLElement, origin: EngineOrigin): HTMLElement => {
+const _image = (slot: HTMLElement, src: string): HTMLElement => {
   const icon = document.createElement("img");
   icon.className = "engine-origin-icon";
-  icon.src = origin.icon ?? "";
+  icon.src = src;
   icon.alt = "";
   icon.loading = "lazy";
   icon.addEventListener("error", () => slot.remove());
   return icon;
 };
 
-const _paintOne = (slot: HTMLElement, origin: EngineOrigin): void => {
+const _artwork = (
+  slot: HTMLElement,
+  origin: EngineOrigin,
+  mode: EngineOriginDisplay,
+): HTMLElement | null => {
+  if (mode === EngineOriginDisplay.Favicon && origin.favicon) {
+    return _image(slot, origin.favicon);
+  }
+  if (origin.icon) return _image(slot, origin.icon);
+  if (origin.glyph) return _glyph(origin);
+  return null;
+};
+
+const _paintOne = (
+  slot: HTMLElement,
+  origin: EngineOrigin,
+  mode: EngineOriginDisplay,
+): void => {
+  const artwork = _artwork(slot, origin, mode);
+  if (!artwork) return;
   const label = t("search-templates.sidebar.engine-origin", {
     source: origin.label,
   });
   slot.title = label;
   slot.setAttribute("aria-label", label);
-  slot.replaceChildren(origin.icon ? _image(slot, origin) : _glyph(origin));
+  slot.dataset.painted = PAINTED_FLAG;
+  slot.replaceChildren(artwork);
+};
+
+const _originFor = (
+  slot: HTMLElement,
+  origins: OriginLookup,
+): EngineOrigin | undefined => {
+  const id = slot.dataset.engineId ?? "";
+  if (id && origins.byId.has(id)) return origins.byId.get(id);
+  return origins.byName.get((slot.dataset.engine ?? "").toLowerCase());
 };
 
 export const paintOrigins = async (root: HTMLElement): Promise<void> => {
@@ -70,11 +145,14 @@ export const paintOrigins = async (root: HTMLElement): Promise<void> => {
     root.querySelectorAll<HTMLElement>(".engine-origin:not([data-painted])"),
   );
   if (slots.length === 0) return;
-  const origins = await _byName();
+  const mode = await _displayMode();
+  if (mode === EngineOriginDisplay.Off) {
+    slots.forEach((slot) => slot.remove());
+    return;
+  }
+  const origins = await _lookupOrigins();
   slots.forEach((slot) => {
-    const origin = origins.get((slot.dataset.engine ?? "").toLowerCase());
-    if (!origin || (!origin.icon && !origin.glyph)) return;
-    slot.dataset.painted = PAINTED_FLAG;
-    _paintOne(slot, origin);
+    const origin = _originFor(slot, origins);
+    if (origin) _paintOne(slot, origin, mode);
   });
 };

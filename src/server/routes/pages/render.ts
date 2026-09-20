@@ -21,6 +21,10 @@ import {
 } from "../../utils/plugin-assets";
 import { asBoolean, asString, isDisabled } from "../../utils/plugin-settings";
 import {
+  DEFAULT_ENGINE_ORIGIN_DISPLAY,
+  isOriginDisplay,
+} from "../../../shared/engine-origins";
+import {
   compileLexicons,
   bootCircuitFromPath,
   syncVortexSignal,
@@ -214,6 +218,13 @@ export async function applyPagePlaceholders(
     Number.isFinite(acDebounceMs) && acDebounceMs >= 0 ? acDebounceMs : 150;
   const acScript = `<script>window.__DEGOOG_AC_DEBOUNCE__=${acDebounce}</script>`;
   result = result.replace("</head>", `${acScript}\n  </head>`);
+
+  const rawOriginDisplay = asString(pageSettings.engineOriginDisplay);
+  const originDisplay = isOriginDisplay(rawOriginDisplay)
+    ? rawOriginDisplay
+    : DEFAULT_ENGINE_ORIGIN_DISPLAY;
+  const originScript = `<script>window.__DEGOOG_ENGINE_ORIGINS__=${JSON.stringify(originDisplay)}</script>`;
+  result = result.replace("</head>", `${originScript}\n  </head>`);
 
   const shortcutSettings = await readShortcutsSettings();
   const shortcutsConfig = {

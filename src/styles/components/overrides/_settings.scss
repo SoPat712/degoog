@@ -609,6 +609,13 @@ html:has(.settings-page-body) {
   }
 }
 
+.settings-engine-origin-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  padding: $space-2 0;
+}
+
 .settings-rl-grid {
   display: grid;
   grid-template-columns: 1fr auto;

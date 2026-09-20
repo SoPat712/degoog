@@ -65,7 +65,7 @@ const _pickBestResult = (
   if (candidates.length === 0) return null;
   return candidates.reduce((best, r) =>
     _scoreSnippet(r.snippet, queryTerms) >
-    _scoreSnippet(best.snippet, queryTerms)
+      _scoreSnippet(best.snippet, queryTerms)
       ? r
       : best,
   );
@@ -345,7 +345,6 @@ const atAGlanceSlot: SlotPlugin = {
     );
 
     return {
-      title: this.t!("at-a-glance.title", undefined, context?.locale),
       html:
         '<div class="glance-box degoog-panel degoog-panel--slot degoog-panel--slot-body-padded degoog-vstack">' +
         `<div class="glance-snippet degoog-text degoog-text--md">${escapeHtml(snippet)}</div>` +

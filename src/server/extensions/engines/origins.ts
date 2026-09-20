@@ -16,6 +16,7 @@ import { folderFromExtID } from "../../utils/extension-id";
 import { getBasePath } from "../../utils/base-url";
 import { buildSignedProxyUrl } from "../../utils/proxy-sign";
 import { logger } from "../../utils/logger";
+import { engineHost } from "./engine-hosts";
 
 const NS = "engine-origins";
 
@@ -36,6 +37,21 @@ const _storeOrigin = (repo: RepoInfo): EngineOrigin => {
     return { ...base, icon: buildSignedProxyUrl(image) };
   }
   return { ...base, glyph: STORE_ORIGIN_GLYPH };
+};
+
+const _hostOf = (site: string): string | undefined => {
+  try {
+    return new URL(site).hostname || undefined;
+  } catch (err) {
+    logger.debug(NS, `engine site "${site}" is not a usable url`, err);
+    return undefined;
+  }
+};
+
+const _faviconFor = (entry: { id: string; site?: string }): string | undefined => {
+  const host = entry.site ? _hostOf(entry.site) : engineHost(entry.id);
+  if (!host) return undefined;
+  return `${getBasePath()}/api/proxy/favicon?domain=${encodeURIComponent(host)}`;
 };
 
 const _urlOf = (record: unknown, field: string): string | null => {
@@ -76,17 +92,21 @@ export const storeOrigins = async (): Promise<OriginMap> => {
 };
 
 export const engineOrigin = (
-  entry: { id: string; compatibilityLayer?: string },
+  entry: { id: string; compatibilityLayer?: string; site?: string },
   origins: OriginMap,
 ): EngineOrigin => {
+  const favicon = _faviconFor(entry);
   const layer = entry.compatibilityLayer as CompatLayerId | undefined;
   if (layer && COMPAT_ORIGIN_ICONS[layer]) {
     return {
       kind: EngineOriginKind.Compat,
       label: COMPAT_LAYER_LABELS[layer],
       icon: _asset(COMPAT_ORIGIN_ICONS[layer]),
+      favicon,
     };
   }
   const folder = folderFromExtID(entry.id, "engine");
-  return origins.get(folder) ?? origins.get(entry.id) ?? _coreOrigin();
+  const provenance =
+    origins.get(folder) ?? origins.get(entry.id) ?? _coreOrigin();
+  return favicon ? { ...provenance, favicon } : provenance;
 };

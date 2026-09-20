@@ -83,6 +83,7 @@ export interface FourGetCompatEntry {
   displayName: string;
   searchTypes: string[];
   description?: string;
+  site?: string;
   instance: SearchEngine;
   source?: "plugin" | "builtin";
   compatibilityLayer?: CompatLayerId;
@@ -475,6 +476,7 @@ export const loadFourGetEngines = async (): Promise<FourGetCompatEntry[]> => {
       id,
       displayName,
       searchTypes: meta.types,
+      site: catalogEntry(meta.code)?.site,
       instance,
       source: "plugin",
       compatibilityLayer: CompatLayerId.FourGet,

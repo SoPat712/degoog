@@ -145,7 +145,7 @@ export function updateEngineTimings(
     html += `
       <div class="engine-stat-row${statusClass}">
         <div class="engine-stat-info">
-          <div class="engine-stat-label">${originSlot(et.name)}${et.name}</div>
+          <div class="engine-stat-label">${originSlot(et.name, et.id)}${et.name}</div>
           <div class="engine-stat-meta">${meta}</div>
         </div>
       </div>`;

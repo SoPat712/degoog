@@ -12,6 +12,22 @@ describe("engine stats", () => {
     ).toEqual([{ name: "Google", time: 180, resultCount: 18, status: "ok" }]);
   });
 
+  test("two engines sharing a display name stay separate rows", () => {
+    const merged = mergeEngineTimings(
+      [
+        { name: "Startpage", id: "store-startpage-engine", time: 100, resultCount: 10, status: "ok" },
+        { name: "Startpage", id: "startpage-4get-engine", time: 90, resultCount: 6, status: "ok" },
+      ],
+      [
+        { name: "Startpage", id: "store-startpage-engine", time: 50, resultCount: 5, status: "ok" },
+      ],
+      2,
+    );
+    expect(merged).toHaveLength(2);
+    expect(merged.find((et) => et.id === "store-startpage-engine")?.resultCount).toBe(15);
+    expect(merged.find((et) => et.id === "startpage-4get-engine")?.resultCount).toBe(6);
+  });
+
   test("keeps previous count and records failed page", () => {
     expect(
       mergeEngineTimings(

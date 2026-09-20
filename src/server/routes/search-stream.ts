@@ -98,6 +98,7 @@ router.get("/api/search/stream", async (c) => {
           let attempt = 0;
           let lastTiming: EngineTiming = {
             name: engineName,
+            id,
             time: 0,
             resultCount: 0,
           };

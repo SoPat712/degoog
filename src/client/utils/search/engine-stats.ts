@@ -7,6 +7,8 @@ export type EngineTimingWithPage = EngineTiming & {
 const _failed = (timing: EngineTiming): boolean =>
   !!timing.status && timing.status !== "ok";
 
+const _rowKey = (timing: EngineTiming): string => timing.id || timing.name;
+
 export const mergeEngineTimings = (
   existing: EngineTimingWithPage[],
   incoming: EngineTiming[],
@@ -14,14 +16,14 @@ export const mergeEngineTimings = (
 ): EngineTimingWithPage[] => {
   const merged = new Map<string, EngineTimingWithPage>();
   existing.forEach((timing) => {
-    merged.set(timing.name, { ...timing });
+    merged.set(_rowKey(timing), { ...timing });
   });
 
   incoming.forEach((timing) => {
-    const prev = merged.get(timing.name);
+    const prev = merged.get(_rowKey(timing));
     const failed = _failed(timing);
     const recovered = prev?.failedPage === page && !failed;
-    merged.set(timing.name, {
+    merged.set(_rowKey(timing), {
       ...prev,
       ...timing,
       time: (prev?.time ?? 0) + timing.time,

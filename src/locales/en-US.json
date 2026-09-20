@@ -55,7 +55,12 @@
       "hide-url-params-aria": "Hide query parameters in result URLs",
       "show-result-dates": "Show publication dates on results",
       "show-result-dates-aria": "Show publication dates on results",
-      "show-result-dates-tooltip": "Shows the date an engine reported for a result, when it reported one. Turning this off hides the date entirely."
+      "show-result-dates-tooltip": "Shows the date an engine reported for a result, when it reported one. Turning this off hides the date entirely.",
+      "engine-origins": "Engine badges in the results sidebar",
+      "engine-origins-instance-default": "Instance default",
+      "engine-origins-favicon": "Engine favicons",
+      "engine-origins-provenance": "Where the engine came from",
+      "engine-origins-off": "Hide them"
     },
     "sync": {
       "heading": "Instance defaults",
@@ -324,7 +329,12 @@
       "compat-desc": "Run engines written for other search engines. Both layers are experimental.",
       "4get-enable": "4get compatibility layer",
       "4get-enable-desc": "Run 4get scrapers as engines. Needs PHP 8.1+ on the server. Adds a 4get button on the engines page.",
-      "4get-enable-aria": "Toggle the 4get compatibility layer"
+      "4get-enable-aria": "Toggle the 4get compatibility layer",
+      "engine-origins-label": "Engine badges",
+      "engine-origins-desc": "The little icon next to each engine in the results sidebar. Favicons show the site the engine searches, provenance shows whether the engine came from the Store, SearX or 4get. Visitors can pick their own in general settings.",
+      "engine-origins-favicon": "Engine favicons",
+      "engine-origins-provenance": "Where the engine came from",
+      "engine-origins-off": "Hide them"
     },
     "proxy-test": {
       "not-enabled": "Proxy is not enabled. Enable it and save before testing.",

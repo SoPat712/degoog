@@ -36,6 +36,7 @@ import {
   type CompatEntry,
 } from "../compatibility-layer/registry";
 import { engineOrigin, storeOrigins } from "./origins";
+import { primeEngineHosts } from "./engine-hosts";
 import type { EngineOrigin } from "../../../shared/engine-origins";
 
 const builtinsDir = join(import.meta.dir, "builtins");
@@ -67,6 +68,7 @@ interface PluginEntry {
   displayName: string;
   searchTypes: string[];
   description?: string;
+  site?: string;
   instance: SearchEngine;
   disabledByDefault?: boolean;
   source?: RegistrySource;
@@ -314,6 +316,7 @@ const engineRegistry = createRegistry<PluginEntry>({
       searchTypes: declared.length > 0 ? declared : isFn ? [] : ["web"],
       description:
         typeof mod.description === "string" ? mod.description : undefined,
+      site: typeof mod.site === "string" ? mod.site : undefined,
       filters: _coerceFilters(mod.filters),
       instance,
     };
@@ -725,6 +728,7 @@ export const getEngineExtensionMeta = async (
 export const initEngines = async (bust = false): Promise<void> => {
   clearTypeCache();
   _manifestClaims.clear();
+  await primeEngineHosts();
   await (bust ? engineRegistry.reload() : engineRegistry.init());
   _compatEntries = await loadCompatEngines();
 };

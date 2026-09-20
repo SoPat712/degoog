@@ -29,6 +29,13 @@ export function setToggle(id: string, state?: BoolSetting): void {
   }
 }
 
+export function setSelect(id: string, value?: string): void {
+  const select = document.getElementById(`settings-${id}`);
+  if (!(select instanceof HTMLSelectElement) || value === undefined) return;
+  const known = [...select.options].some((option) => option.value === value);
+  if (known) select.value = value;
+}
+
 export function setVal(id: string, value?: string): void {
   const element = el(id);
   if (element && value !== undefined) element.value = value;

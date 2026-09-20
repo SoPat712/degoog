@@ -116,8 +116,10 @@ export async function handleRetry(
     imageFilter,
   };
   const active = await selectActiveEngines(type, engines, imageFilter);
-  const retried = active.find((e) => e.instance.name === timing.name);
-  const others = active.filter((e) => e.instance.name !== timing.name);
+  const isRetried = (entry: { id: string; instance: { name: string } }): boolean =>
+    timing.id ? entry.id === timing.id : entry.instance.name === timing.name;
+  const retried = active.find(isRetried);
+  const others = active.filter((e) => !isRetried(e));
 
   const liveRuns = await Promise.all(
     others

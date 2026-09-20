@@ -23,6 +23,7 @@ export interface ScoredResult extends SearchResult {
 
 export interface EngineTiming {
   name: string;
+  id?: string;
   time: number;
   resultCount: number;
   status?: string;

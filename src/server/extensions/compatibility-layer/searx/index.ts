@@ -21,7 +21,7 @@ import {
 import { getInstanceSettings } from "../../../utils/server-settings";
 import { runPython, type RpcFetchReply, type RpcHandlers } from "./rpc";
 import { scrubLog } from "../scrub-log";
-import { isSupportFile, isSupportedEngine, SEARX_EXTRA_ENGINES_ENV } from "./catalog";
+import { catalogEntry, isSupportFile, isSupportedEngine, SEARX_EXTRA_ENGINES_ENV } from "./catalog";
 import {
   optionFields,
   overridesFrom,
@@ -35,6 +35,7 @@ export interface SearxCompatEntry {
   displayName: string;
   searchTypes: string[];
   description?: string;
+  site?: string;
   instance: SearchEngine;
   disabledByDefault?: boolean;
   source?: "plugin" | "builtin";
@@ -446,6 +447,7 @@ export const loadSearxCompatibilityEngines = async (): Promise<SearxCompatEntry[
       id,
       displayName: meta.name || file,
       searchTypes: types,
+      site: catalogEntry(rawId)?.site,
       instance,
       source: "plugin",
       compatibilityLayer: "searx",
