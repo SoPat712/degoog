@@ -21,8 +21,6 @@ import { escapeHtml } from "../../utils/dom";
 import { confirmModal } from "../../modules/modals/confirm-modal/confirm";
 import type { ToggleOpts } from "../../types/settings-section";
 import { renderCheckbox, renderSection } from "../shared/section";
-import { getBase } from "../../utils/base-url";
-import { authHeaders } from "../../utils/request";
 import { isUpdateAvailable } from "../../../shared/utils/version";
 
 const t = window.scopedT("core");
@@ -76,18 +74,6 @@ const SEARCH_OPTION_TOGGLES: ToggleOpts[] = [
     titleKey: "settings-page.search-options.show-result-dates-tooltip",
   },
 ];
-
-const renderRestartBannerSection = (): string => `
-  <section class="settings-section ext-card degoog-panel degoog-panel--ext-card settings-restart-banner" id="settings-restart-banner" style="display: none">
-    <div class="setting-section-heading-wrapper">
-      <h2 class="settings-section-heading">${escapeHtml(t("settings-page.restart.heading"))}</h2>
-      <div class="floating-section-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
-    </div>
-    <p class="settings-desc" id="settings-restart-reason">${escapeHtml(t("settings-page.restart.desc"))}</p>
-    <button class="btn btn--secondary degoog-btn degoog-btn--secondary" id="settings-restart-now" type="button">
-      ${escapeHtml(t("settings-page.restart.button"))}
-    </button>
-  </section>`;
 
 const renderAppearanceSection = (): string => {
   const opts = ["system", "light", "dark"] as const;
@@ -217,7 +203,6 @@ const renderPublicSearchOptions = (): string =>
 
 export const renderGeneralContent = (): string =>
   [
-    renderRestartBannerSection(),
     renderAppearanceSection(),
     renderSearchOptionsSection(),
     renderSyncSection(),
@@ -365,62 +350,6 @@ async function initVersionChecker(): Promise<void> {
   });
 }
 
-interface RestartState {
-  pending: boolean;
-  reasons: string[];
-}
-
-async function initRestartBanner(
-  getToken: () => string | null,
-): Promise<void> {
-  const banner = document.getElementById("settings-restart-banner");
-  const reasonEl = document.getElementById("settings-restart-reason");
-  const btn = document.getElementById(
-    "settings-restart-now",
-  ) as HTMLButtonElement | null;
-  if (!banner || !btn) return;
-
-  let state: RestartState;
-  try {
-    const res = await fetch(`${getBase()}/api/settings/restart-state`, {
-      headers: authHeaders(getToken),
-    });
-    if (!res.ok) return;
-    state = (await res.json()) as RestartState;
-  } catch (err) {
-    console.debug("[settings] restart state fetch failed", err);
-    return;
-  }
-
-  if (!state.pending) return;
-  if (reasonEl && state.reasons.length)
-    reasonEl.textContent = state.reasons.join(", ");
-  banner.removeAttribute("style");
-
-  btn.addEventListener("click", async () => {
-    const confirmed = await confirmModal({
-      title: t("settings-page.restart.button"),
-      message: t("settings-page.restart.confirm"),
-    });
-    if (!confirmed) return;
-    btn.disabled = true;
-    try {
-      const res = await fetch(`${getBase()}/api/settings/restart`, {
-        method: "POST",
-        headers: authHeaders(getToken),
-      });
-      if (!res.ok) {
-        btn.disabled = false;
-        return;
-      }
-      btn.textContent = t("settings-page.restart.restarting");
-    } catch (err) {
-      console.debug("[settings] restart trigger failed", err);
-      btn.disabled = false;
-    }
-  });
-}
-
 export async function initGeneralTab(
   getToken: () => string | null,
 ): Promise<void> {
@@ -430,7 +359,6 @@ export async function initGeneralTab(
   await initAppearanceSettings();
   await initSyncSetting(getToken);
   await initVersionChecker();
-  await initRestartBanner(getToken);
 
   document
     .getElementById("settings-wizard-restart")

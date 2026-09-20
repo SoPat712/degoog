@@ -200,8 +200,9 @@ function _initTabs(): void {
 
 function _initSettingsMainOffset(): void {
   const main = document.querySelector<HTMLElement>(".settings-page-main");
+  const sidebar = document.querySelector<HTMLElement>(".settings-sidebar");
   const search = document.querySelector<HTMLElement>(".settings-nav-search");
-  if (!main || !search) return;
+  if (!main || !sidebar || !search) return;
 
   const desktop = window.matchMedia("(min-width: 768px)");
   let frame = 0;
@@ -211,13 +212,18 @@ function _initSettingsMainOffset(): void {
     frame = requestAnimationFrame(() => {
       main.style.paddingTop = "";
       if (!desktop.matches) return;
-      const offset = search.getBoundingClientRect().top - main.getBoundingClientRect().top;
+      // Measured inside the sidebar because it is sticky: against main the offset grows with page scroll.
+      const offset =
+        search.getBoundingClientRect().top -
+        sidebar.getBoundingClientRect().top +
+        sidebar.scrollTop;
       main.style.paddingTop = `${Math.max(0, offset)}px`;
     });
   };
 
   sync();
   window.addEventListener("resize", sync);
+  window.addEventListener("settings-tab-changed", sync);
   desktop.addEventListener("change", sync);
   window.addEventListener("load", sync, { once: true });
   void document.fonts?.ready.then(sync);

@@ -16,6 +16,10 @@ const _renderRestartSection = (): string => `
   <section class="settings-section ext-card degoog-panel degoog-panel--ext-card" id="settings-section-restart">
     ${_h("settings-page.server.restart-heading", "fa-solid fa-power-off")}
     ${_desc("settings-page.server.restart-desc")}
+    <div class="settings-server-restart-pending" id="settings-server-restart-pending" hidden>
+      <p class="store-restart-intro">${escapeHtml(t("settings-page.restart.modal-intro"))}</p>
+      <ul class="store-restart-list" id="settings-server-restart-reasons"></ul>
+    </div>
     <button class="btn btn--secondary degoog-btn degoog-btn--secondary" id="settings-server-restart" type="button">
       ${escapeHtml(t("settings-page.server.restart-button"))}
     </button>

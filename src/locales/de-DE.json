@@ -681,7 +681,7 @@
       "heading": "Neustart erforderlich",
       "desc": "Einige installierte Erweiterungen benötigen einen Neustart des Servers, um richtig zu funktionieren.",
       "modal-intro": "Diese Erweiterungen funktionieren erst nach einem Neustart des Servers:",
-      "modal-note": "Beim Neustart steht Degoog für ein paar Sekunden still. Du kannst später unter Einstellungen › Allgemein neu starten.",
+      "modal-note": "Beim Neustart steht Degoog für ein paar Sekunden still. Du kannst später unter Einstellungen › Server neu starten.",
       "later": "Nicht jetzt",
       "button": "Server neu starten",
       "confirm": "Dadurch wird der Degoog-Server neu gestartet. Laufende Suchen können kurz unterbrochen werden. Fortfahren?",

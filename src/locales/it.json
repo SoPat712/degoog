@@ -613,7 +613,7 @@
       "heading": "Riavvio richiesto",
       "desc": "Alcune delle estensioni che hai installato non si caricano finché il server non riavvia.",
       "modal-intro": "Queste estensioni non fanno niente finché il server non riavvia:",
-      "modal-note": "Il riavvio interrompe Degoog per qualche secondo. Puoi riavviare in seguito da Impostazioni › Generale.",
+      "modal-note": "Il riavvio interrompe Degoog per qualche secondo. Puoi riavviare in seguito da Impostazioni › Server.",
       "later": "Non ora",
       "button": "Riavvia il server",
       "confirm": "Questo riavvia Degoog. Le ricerche in corso si interrompono per qualche secondo. Continuare?",
