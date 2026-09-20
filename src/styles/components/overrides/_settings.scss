@@ -333,6 +333,55 @@ html:has(.settings-page-body) {
   font-weight: 500;
 }
 
+.settings-server-block + .settings-server-block {
+  margin-top: $space-6;
+}
+
+.settings-subheading {
+  font-size: $font-size-md;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 $space-2;
+}
+
+.settings-backup-note {
+  font-style: italic;
+}
+
+.settings-backup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-3;
+
+  .degoog-file {
+    flex: 1 1 14rem;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .degoog-file-trigger i {
+    display: none;
+  }
+
+  .degoog-file-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .degoog-file-name:not([hidden]) ~ .degoog-file-drop-hint {
+    display: none;
+  }
+}
+
+.settings-backup-action {
+  flex: 0 0 auto;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
 .settings-server-preset-list {
   display: grid;
   gap: $space-1;

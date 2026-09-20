@@ -76,8 +76,34 @@
       "last-checked": "Ultimo controllo"
     },
     "server": {
+      "config": {
+        "heading": "Preset e backup",
+        "presets-label": "Preset",
+        "backup-label": "Backup"
+      },
+      "backup": {
+        "desc": "Sposta altrove questa istanza, o rimettila a posto. Il file contiene ogni impostazione server di questa scheda, più le predefinite pubblicate per i visitatori, l'ordine delle schede, gli alias dei bang, le scorciatoie scritte a mano, i repository dello store, le estensioni installate e le loro impostazioni, quindi trattalo come una password. Il ripristino sovrascrive quello che il file menziona, clona i repository che nomina, installa le estensioni che elenca, e lascia il resto dell'istanza com'è.",
+        "manual-extensions": "Le estensioni che hai messo in data/ a mano non sono in questo file, solo quelle installate dallo Store. Copia quelle cartelle da te. Le loro impostazioni sono nel backup e si applicano appena le cartelle ci sono.",
+        "export-button": "Scarica backup",
+        "exporting": "Preparazione...",
+        "exported": "Backup scaricato",
+        "export-failed": "Esportazione fallita",
+        "export-too-large": "Le tue impostazioni non stanno in un solo file di backup, il log del server dice di quanto",
+        "import-choose": "Scegli backup",
+        "import-drop": "oppure trascina qui un file .json",
+        "import-button": "Ripristina backup",
+        "import-confirm": "Questo sovrascrive le impostazioni server elencate nel backup, clona ogni repository che nomina, installa le estensioni che elenca e riscrive il suo codice delle scorciatoie, che poi gira su questo server. Poi ricarica questa pagina. La clonazione può richiedere tempo. Non si torna indietro.",
+        "importing": "Ripristino in corso...",
+        "imported": "Ripristinate {count} impostazioni",
+        "imported-extensions": "Ripristinate {count} impostazioni, {repos} repository e {extensions} estensioni",
+        "imported-partial": "Ripristinate {count} impostazioni, ma {failed} cose non ce l'hanno fatta - il log del server dice quali",
+        "imported-reloading": "Impostazioni ripristinate, ricarico...",
+        "import-invalid": "Quel file non è un backup delle impostazioni di Degoog",
+        "import-empty": "Questo backup non contiene nulla che questa build conosca",
+        "import-too-large": "Questo backup è più grande di quanto questa istanza accetti",
+        "import-failed": "Importazione fallita"
+      },
       "presets": {
-        "heading": "Preset server",
         "desc": "Un clic per una configurazione comune. Sovrascrive le impostazioni elencate sotto. Variabili d'ambiente e liste personalizzate restano al loro posto.",
         "select-label": "Preset",
         "select-placeholder": "Scegli un preset",

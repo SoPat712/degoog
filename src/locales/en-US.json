@@ -81,8 +81,34 @@
       "last-checked": "Last checked"
     },
     "server": {
+      "config": {
+        "heading": "Presets & backup",
+        "presets-label": "Presets",
+        "backup-label": "Backup"
+      },
+      "backup": {
+        "desc": "Move this instance somewhere else, or put it back. The file holds every server setting on this tab plus your published visitor defaults, tab order, bang aliases, hand written shortcuts, store repositories, installed extensions and their settings, so treat it like a password. Restoring overwrites whatever the file mentions, clones the repositories it names, installs the extensions it lists, and leaves the rest of this instance alone.",
+        "manual-extensions": "Extensions you dropped into data/ by hand are not in this file, only the ones the Store installed. Copy those folders over yourself. Their settings are in the backup and apply as soon as the folders are there.",
+        "export-button": "Download backup",
+        "exporting": "Preparing...",
+        "exported": "Backup downloaded",
+        "export-failed": "Export failed",
+        "export-too-large": "Your settings are too big to fit in one backup file, the server log says by how much",
+        "import-choose": "Choose backup",
+        "import-drop": "or drop a .json file here",
+        "import-button": "Restore backup",
+        "import-confirm": "This overwrites the server settings listed in the backup, clones any repository it names, installs the extensions it lists and writes back its shortcut code, which then runs on this server. Then it reloads this page. Cloning can take a while. There is no undo.",
+        "importing": "Restoring...",
+        "imported": "Restored {count} settings",
+        "imported-extensions": "Restored {count} settings, {repos} repositories and {extensions} extensions",
+        "imported-partial": "Restored {count} settings, but {failed} things did not make it - the server log says which",
+        "imported-reloading": "Settings restored, reloading...",
+        "import-invalid": "That file is not a Degoog settings backup",
+        "import-empty": "That backup holds nothing this build knows about",
+        "import-too-large": "That backup is bigger than this instance will accept",
+        "import-failed": "Import failed"
+      },
       "presets": {
-        "heading": "Server presets",
         "desc": "One click for a common setup. It overwrites the settings listed below. Environment variables and your custom lists stay put.",
         "select-label": "Preset",
         "select-placeholder": "Choose a preset",

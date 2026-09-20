@@ -17,6 +17,7 @@ import { renderScoreRows, scoreRowTemplate } from "./domain-score";
 import { initHoneypot } from "./honeypot";
 import { bindToggleAutoSave, injectFieldSaveBtns } from "./auto-save";
 import { renderServerContent } from "./render";
+import { initBackupControls } from "./backup";
 import { flashError, flashSuccess } from "../shared/flash-msg";
 import { fetchRestartState, formatReason } from "../shared/restart-state";
 import {
@@ -554,6 +555,7 @@ export async function initServerTab(
   bindToggleAutoSave(getToken);
   injectFieldSaveBtns(getToken);
   _initPresetControls(getToken);
+  initBackupControls(getToken);
 
   document
     .getElementById("settings-degoog-indexer-enabled")

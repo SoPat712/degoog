@@ -1,4 +1,5 @@
 import { escapeHtml } from "../../utils/dom";
+import { renderFileUpload } from "../../utils/file-upload";
 import { SERVER_SETTINGS_PRESETS } from "./presets";
 
 const t = window.scopedT("core");
@@ -25,14 +26,19 @@ const _renderRestartSection = (): string => `
     </button>
   </section>`;
 
-const _renderPresetSection = (): string => `
-  <section class="settings-section ext-card degoog-panel degoog-panel--ext-card settings-server-presets" id="settings-section-server-presets">
-    ${_h("settings-page.server.presets.heading", "fa-solid fa-sliders")}
+const _note = (key: string): string =>
+  `<p class="settings-desc settings-backup-note">${escapeHtml(t(key))}</p>`;
+
+const _subheading = (key: string): string =>
+  `<h3 class="settings-subheading">${escapeHtml(t(key))}</h3>`;
+
+const _presetsBlock = (): string => `
+  <div class="settings-server-block">
+    ${_subheading("settings-page.server.config.presets-label")}
     ${_desc("settings-page.server.presets.desc")}
     <div class="settings-fieldset">
-      <label for="settings-server-preset-select" class="settings-proxy-urls-label">${escapeHtml(t("settings-page.server.presets.select-label"))}</label>
       <div class="degoog-select-wrap">
-        <select id="settings-server-preset-select" class="settings-server-preset-select degoog-input">
+        <select id="settings-server-preset-select" class="settings-server-preset-select degoog-input" aria-label="${escapeHtml(t("settings-page.server.presets.select-label"))}">
           <option value="">${escapeHtml(t("settings-page.server.presets.select-placeholder"))}</option>
           ${SERVER_SETTINGS_PRESETS.map(
             (preset) =>
@@ -58,6 +64,35 @@ const _renderPresetSection = (): string => `
         </div>
       </div>
     </div>
+  </div>`;
+
+const _backupBlock = (): string => `
+  <div class="settings-server-block" id="settings-server-backup">
+    ${_subheading("settings-page.server.config.backup-label")}
+    ${_desc("settings-page.server.backup.desc")}
+    ${_note("settings-page.server.backup.manual-extensions")}
+    <div class="settings-backup-row">
+      <button class="btn btn--secondary degoog-btn degoog-btn--secondary settings-backup-action" id="settings-backup-export" type="button">
+        ${escapeHtml(t("settings-page.server.backup.export-button"))}
+      </button>
+      ${renderFileUpload({
+        inputId: "settings-backup-file",
+        buttonLabel: t("settings-page.server.backup.import-choose"),
+        dropLabel: t("settings-page.server.backup.import-drop"),
+        accept: "application/json,.json",
+      })}
+      <button class="btn btn--primary degoog-btn degoog-btn--primary settings-backup-action" id="settings-backup-import" type="button" disabled>
+        ${escapeHtml(t("settings-page.server.backup.import-button"))}
+      </button>
+    </div>
+    <span class="settings-server-preset-status" id="settings-backup-status" role="status" aria-live="polite"></span>
+  </div>`;
+
+const _renderConfigSection = (): string => `
+  <section class="settings-section ext-card degoog-panel degoog-panel--ext-card settings-server-presets" id="settings-section-server-presets">
+    ${_h("settings-page.server.config.heading", "fa-solid fa-sliders")}
+    ${_presetsBlock()}
+    ${_backupBlock()}
   </section>`;
 
 const _toggle = (
@@ -340,7 +375,7 @@ const _renderCustomCssSection = (): string => `
 export const renderServerContent = (): string =>
   [
     _renderRestartSection(),
-    _renderPresetSection(),
+    _renderConfigSection(),
     _renderCacheSection(),
     _renderApiKeySection(),
     _renderIndexerSection(),

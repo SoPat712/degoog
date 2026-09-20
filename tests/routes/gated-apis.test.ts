@@ -7,7 +7,7 @@ type Router = {
 const GATED_APIS: Array<{
   method: "GET" | "POST" | "DELETE";
   path: string;
-  routerKey: "store" | "themes" | "extensions" | "pages" | "compat";
+  routerKey: "store" | "themes" | "extensions" | "pages" | "compat" | "backup";
   body?: string;
 }> = [
   {
@@ -23,6 +23,13 @@ const GATED_APIS: Array<{
     body: "{}",
   },
   { method: "POST", path: "/api/cache/clear", routerKey: "pages" },
+  { method: "GET", path: "/api/settings/export", routerKey: "backup" },
+  {
+    method: "POST",
+    path: "/api/settings/import",
+    routerKey: "backup",
+    body: "{}",
+  },
   {
     method: "GET",
     path: "/api/store/repos/fake/asset?path=foo",
@@ -108,19 +115,22 @@ let envRestore: string | undefined;
 beforeAll(async () => {
   envRestore = process.env.DEGOOG_PUBLIC_INSTANCE;
   process.env.DEGOOG_PUBLIC_INSTANCE = "true";
-  const [storeMod, themesMod, extensionsMod, pagesMod, compatMod] = await Promise.all([
-    import("../../src/server/routes/store"),
-    import("../../src/server/routes/themes"),
-    import("../../src/server/routes/extensions"),
-    import("../../src/server/routes/pages"),
-    import("../../src/server/routes/compat-engines"),
-  ]);
+  const [storeMod, themesMod, extensionsMod, pagesMod, compatMod, backupMod] =
+    await Promise.all([
+      import("../../src/server/routes/store"),
+      import("../../src/server/routes/themes"),
+      import("../../src/server/routes/extensions"),
+      import("../../src/server/routes/pages"),
+      import("../../src/server/routes/compat-engines"),
+      import("../../src/server/routes/settings-backup"),
+    ]);
   routers = {
     store: storeMod.default,
     themes: themesMod.default,
     extensions: extensionsMod.default,
     pages: pagesMod.default,
     compat: compatMod.default,
+    backup: backupMod.default,
   };
 });
 
