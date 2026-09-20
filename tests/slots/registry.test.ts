@@ -5,7 +5,11 @@ import {
   getSlotPlugins,
   initSlotPlugins,
 } from "../../src/server/extensions/slots/registry";
-import { SlotPanelPosition } from "../../src/server/types";
+import {
+  SlotPanelPosition,
+  type ScoredResult,
+  type SlotPluginContext,
+} from "../../src/server/types";
 
 const AT_A_GLANCE_ID = makeExtID("at-a-glance", "slot");
 const WIKIPEDIA_ID = makeExtID("wikipedia", "slot");
@@ -63,5 +67,29 @@ describe("slots registry", () => {
     expect(slot).not.toBeNull();
     const result = await slot!.execute("__nonexistent_query_xyz__");
     expect(result.html).toBe("");
+  });
+
+  test("built-in at-a-glance slot translates its strings with the request locale", async () => {
+    const slot = getSlotPluginById(AT_A_GLANCE_ID);
+    expect(slot).not.toBeNull();
+    const results = [
+      {
+        title: "Example Domain",
+        url: "https://example.com/",
+        snippet:
+          "This domain is for use in illustrative examples in documents and can be used without permission.",
+        score: 1,
+        sources: ["Google CSE"],
+      },
+    ] as unknown as ScoredResult[];
+    const withLocale = (locale: string) =>
+      ({ results, locale }) as unknown as SlotPluginContext;
+
+    const de = await slot!.execute("example domain", withLocale("de-DE"));
+    expect(de.html).toContain("Gefunden auf: Google CSE");
+    expect(de.html).not.toContain("Found on");
+
+    const en = await slot!.execute("example domain", withLocale("en-US"));
+    expect(en.html).toContain("Found on: Google CSE");
   });
 });
