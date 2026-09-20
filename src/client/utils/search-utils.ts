@@ -87,12 +87,8 @@ export async function fetchGlancePanels(
     if (glanceEl) glanceEl.innerHTML = "";
     return;
   }
-  if (results === undefined) {
-    abortGlancePanels();
-    glanceAbortController = new AbortController();
-  } else if (!glanceAbortController) {
-    glanceAbortController = new AbortController();
-  }
+  abortGlancePanels();
+  glanceAbortController = new AbortController();
   const signal = glanceAbortController!.signal;
   try {
     const res = await fetch(`${getBase()}/api/slots/glance`, {
