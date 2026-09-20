@@ -118,6 +118,7 @@ export const pendingReasons = async (
 
   if (!state.pending) {
     writeDismissed("");
+    if (!document.querySelector(".store-restart-overlay")) lastShownReasons = "";
     return null;
   }
 

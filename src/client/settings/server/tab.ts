@@ -427,13 +427,17 @@ const _initApiKeyControls = (
   );
 };
 
+let _restartSyncRun = 0;
+
 const _syncRestartPending = async (
   getToken: () => string | null,
 ): Promise<void> => {
   const wrap = document.getElementById("settings-server-restart-pending");
   const list = document.getElementById("settings-server-restart-reasons");
   if (!wrap || !list) return;
+  const run = ++_restartSyncRun;
   const state = await fetchRestartState(getToken);
+  if (run !== _restartSyncRun) return;
   wrap.hidden = !state?.pending;
   list.innerHTML = (state?.reasons ?? [])
     .map((r) => `<li>• ${escapeHtml(formatReason(r))}</li>`)
