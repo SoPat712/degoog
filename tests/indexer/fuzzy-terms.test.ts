@@ -3,7 +3,7 @@ import { mkdirSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-const SHARED = join(tmpdir(), "degoog-indexer-fuzzy-tests");
+const SHARED = join(tmpdir(), "degoog-indexer-tests");
 mkdirSync(SHARED, { recursive: true });
 process.env.DEGOOG_INDEXER_DIR = SHARED;
 process.env.DEGOOG_INDEXER_DB = join(SHARED, "index.db");
