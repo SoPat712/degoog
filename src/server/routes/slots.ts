@@ -101,6 +101,7 @@ router.post("/api/slots/glance", async (c) => {
         signProxyUrl: buildSignedProxyUrl,
         createCache,
         useCache,
+        locale,
       };
       const t0 = performance.now();
       const out = await plugin.execute(body.query!.trim(), context);

@@ -196,6 +196,7 @@ export async function runSlotPlugins(
         signProxyUrl: buildSignedProxyUrl,
         createCache,
         useCache,
+        locale,
       };
       const t0 = performance.now();
       const out = await withTimeout(

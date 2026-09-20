@@ -338,12 +338,14 @@ const atAGlanceSlot: SlotPlugin = {
       snippet = `${snippet.slice(0, settings.maxLength)}…`;
     }
 
-    const foundOn = this.t!("at-a-glance.found-on", {
-      sources_text: best.sources.join(", "),
-    });
+    const foundOn = this.t!(
+      "at-a-glance.found-on",
+      { sources_text: best.sources.join(", ") },
+      context?.locale,
+    );
 
     return {
-      title: this.t!("at-a-glance.title"),
+      title: this.t!("at-a-glance.title", undefined, context?.locale),
       html:
         '<div class="glance-box degoog-panel degoog-panel--slot degoog-panel--slot-body-padded degoog-vstack">' +
         `<div class="glance-snippet degoog-text degoog-text--md">${escapeHtml(snippet)}</div>` +

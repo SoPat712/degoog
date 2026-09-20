@@ -168,6 +168,12 @@ export interface SlotPluginContext {
   /** @deprecated Use `useCache` (async, namespaced, Valkey-backed when enabled). */
   createCache: CreateCache;
   useCache: UseCache;
+  /**
+   * Locale of the current request (e.g. `de-DE`). Pass it as the third argument of
+   * `this.t(...)` when building translated strings inside `execute`, otherwise the
+   * translator falls back to its default locale.
+   */
+  locale?: string;
 }
 
 export interface SlotPlugin {
