@@ -57,7 +57,11 @@ const _readBackup = (
 ): { settings: Record<string, string>; extensions: ExtensionsBackup } | null => {
   if (body.kind !== BACKUP_KIND) return null;
   // A newer file could hold keys this build would mangle.
-  if (typeof body.version !== "number" || body.version > BACKUP_VERSION)
+  if (
+    !Number.isInteger(body.version) ||
+    (body.version as number) < 1 ||
+    (body.version as number) > BACKUP_VERSION
+  )
     return null;
   if (!_isRecord(body.settings)) return null;
   const settings: Record<string, string> = {};
