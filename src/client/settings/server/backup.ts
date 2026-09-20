@@ -3,16 +3,22 @@ import { authHeaders, jsonHeaders } from "../../utils/request";
 import { confirmModal } from "../../modules/modals/confirm-modal/confirm";
 import { initFileUpload } from "../../utils/file-upload";
 import { flashError, flashSuccess } from "../shared/flash-msg";
+import { MAX_SETTINGS_BACKUP_BYTES } from "../../../shared/settings-backup";
 
 const t = window.scopedT("core");
 
-const MAX_BACKUP_BYTES = 2_000_000;
+const MAX_BACKUP_BYTES = MAX_SETTINGS_BACKUP_BYTES;
 const REVOKE_DELAY_MS = 60_000;
 const RELOAD_DELAY_MS = 900;
 const JSON_TYPE = "application/json";
 
 type BackupKind = "export" | "import";
-type ImportResponse = { applied?: number; error?: string };
+type ImportResponse = {
+  applied?: number;
+  reposAdded?: number;
+  extensionsInstalled?: number;
+  error?: string;
+};
 
 const _status = (kind: BackupKind, text: string): void => {
   const el = document.getElementById(`settings-backup-${kind}-status`);
@@ -103,6 +109,19 @@ const _parseBackup = async (file: File): Promise<object | null> => {
   }
 };
 
+const _importedText = (data: ImportResponse): string => {
+  const count = String(data.applied ?? 0);
+  const repos = data.reposAdded ?? 0;
+  const extensions = data.extensionsInstalled ?? 0;
+  if (!repos && !extensions)
+    return t("settings-page.server.backup.imported", { count });
+  return t("settings-page.server.backup.imported-extensions", {
+    count,
+    repos: String(repos),
+    extensions: String(extensions),
+  });
+};
+
 const _bindImport = (getToken: () => string | null): void => {
   const panel = document.getElementById("settings-server-backup");
   const btn = document.getElementById(
@@ -146,12 +165,7 @@ const _bindImport = (getToken: () => string | null): void => {
         return;
       }
       upload.reset();
-      _status(
-        "import",
-        t("settings-page.server.backup.imported", {
-          count: String(data.applied ?? 0),
-        }),
-      );
+      _status("import", _importedText(data));
       flashSuccess(t("settings-page.server.backup.imported-reloading"));
       // Server is live this page still has its old CSS, theme and fields.
       setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);

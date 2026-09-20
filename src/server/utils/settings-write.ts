@@ -15,6 +15,7 @@ import { ExtensionStoreType } from "../types";
 import { OVERSIZED_TEXT_FIELDS } from "../../shared/indexer";
 import { SEARCH_LIST_FIELDS } from "../../shared/settings-lists";
 import { logger } from "./logger";
+import { createMutex } from "./mutex";
 
 export type SettingsSaveResult = {
   ok: true;
@@ -110,13 +111,19 @@ const _compatToggled = (
       key in updates && asBoolean(updates[key]) !== asBoolean(existing[key]),
   );
 
+// Serializes concurrent saves (settings form, backup import) so they don't clobber each other.
+const _runSettingsExclusive = createMutex();
+
 // Shared with the settings form; merges, so a partial body is safe.
 export const applySettingsBatch = async (
   body: Record<string, string>,
 ): Promise<SettingsSaveResult> => {
-  const existing = await getInstanceSettings();
-  const updates = _schemaUpdates(body);
-  await setInstanceSettings({ ...existing, ...updates });
+  const { updates, existing } = await _runSettingsExclusive(async () => {
+    const before = await getInstanceSettings();
+    const next = _schemaUpdates(body);
+    await setInstanceSettings({ ...before, ...next });
+    return { updates: next, existing: before };
+  });
   await _persistListFields(body);
   await syncBlocklist();
   const indexerUp = await reconcileIndexerQueue();

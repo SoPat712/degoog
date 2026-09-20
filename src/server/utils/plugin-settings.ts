@@ -65,6 +65,10 @@ const load = async (): Promise<PluginSettingsStore> => {
 
 export const didSettingsLoadFail = (): boolean => loadFailed;
 
+export const clearPluginSettingsCache = (): void => {
+  cache = null;
+};
+
 async function persist(store: PluginSettingsStore): Promise<void> {
   await writeJsonAtomic(pluginSettingsFile(), store);
 }
