@@ -56,6 +56,23 @@ describe("HTCPCP", () => {
     expect(await res.text()).toBe("start");
   });
 
+  test("a HEAD knock keeps the plain teapot metadata", async () => {
+    const res = await pour("/teapot", { method: "HEAD" });
+    expect(res.status).toBe(418);
+    expect(res.headers.get("Content-Type")).toContain("message/teapot");
+    expect(await res.text()).toBe("");
+  });
+
+  test("a HEAD knock from a browser keeps the html metadata", async () => {
+    const res = await pour("/teapot", {
+      method: "HEAD",
+      headers: { Accept: "text/html" },
+    });
+    expect(res.status).toBe(418);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    expect(await res.text()).toBe("");
+  });
+
   test("browsers get a page, still a teapot", async () => {
     const res = await pour("/teapot", { headers: { Accept: "text/html" } });
     expect(res.status).toBe(418);

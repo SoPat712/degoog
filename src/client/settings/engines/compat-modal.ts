@@ -119,7 +119,11 @@ const _depsOkay = async (
   });
 };
 
+let _session = 0;
+
 export const openCompatModal = async (layer: CompatLayerView): Promise<void> => {
+  const session = ++_session;
+  const live = (): boolean => session === _session;
   let items: CompatCatalogItem[] = [];
   let query = "";
   const name = layer.label;
@@ -153,6 +157,7 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
     try {
       await sendCompat(layer.id, action, code);
       items = await fetchCompat(layer.id);
+      if (!live()) return;
       if (pulling) {
         updating.delete(code);
         updated.add(code);
@@ -162,6 +167,7 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
       if (pulling) _say("");
       else _say(t(`${KEY}compat-restart`, { layer: name }));
     } catch (err) {
+      if (!live()) return;
       if (pulling) {
         updating.delete(code);
         if (btn.isConnected) _idleUpdate(btn, name);
@@ -179,6 +185,7 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
   ): Promise<void> => {
     const item = items.find((entry) => entry.code === code);
     if (!(await _depsOkay(item, name))) return;
+    if (!live()) return;
     await runAction(CompatAction.Install, code, btn);
   };
 
@@ -196,14 +203,17 @@ export const openCompatModal = async (layer: CompatLayerView): Promise<void> => 
 
   const search = body.querySelector<HTMLInputElement>("#compat-search-input");
   search?.addEventListener("input", () => {
+    if (!live()) return;
     query = search.value;
     _paint(items, query, name, ui());
   });
 
   try {
     items = await fetchCompat(layer.id);
+    if (!live()) return;
     _paint(items, query, name, ui());
   } catch (err) {
+    if (!live()) return;
     _say(err instanceof Error ? err.message : String(err), true);
   }
 };

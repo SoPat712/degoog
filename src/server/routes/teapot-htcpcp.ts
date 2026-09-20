@@ -32,11 +32,14 @@ export const htcpcpHeaders = (
   ...extra,
 });
 
-export const refuseCoffee = (body: string | null = TEAPOT_STATUS_TEXT): Response =>
+export const refuseCoffee = (
+  body: string | null = TEAPOT_STATUS_TEXT,
+  contentType?: string,
+): Response =>
   new Response(body, {
     status: 418,
     statusText: TEAPOT_STATUS_TEXT,
-    headers: htcpcpHeaders(body === null ? TEXT_PLAIN : MEDIA_TEA, {
+    headers: htcpcpHeaders(contentType ?? (body === null ? TEXT_PLAIN : MEDIA_TEA), {
       Safe: "no",
     }),
   });

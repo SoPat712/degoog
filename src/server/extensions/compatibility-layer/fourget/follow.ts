@@ -1,5 +1,12 @@
 const MAX_REDIRECTS = 5;
 const STRIP_CROSS_ORIGIN = new Set(["cookie", "authorization"]);
+const STRIP_ON_REWRITE = new Set([
+  "content-type",
+  "content-length",
+  "content-encoding",
+  "content-language",
+  "content-location",
+]);
 
 export const isHttpRedirect = (status: number): boolean =>
   status >= 300 && status < 400;
@@ -32,6 +39,11 @@ const _without = (
   return out;
 };
 
+const _rewritesToGet = (status: number, method: string): boolean => {
+  if (status === 303) return method !== "GET" && method !== "HEAD";
+  return (status === 301 || status === 302) && method === "POST";
+};
+
 export type EngineFetcher = (
   url: string,
   init: {
@@ -54,9 +66,9 @@ export const followEngineFetch = async (
 ): Promise<Response> => {
   if (!isWebUrl(req.url)) throw new Error("only http(s) requests are allowed");
   let url = req.url;
-  const method = req.method;
+  let method = req.method.toUpperCase();
   let headers = { ...req.headers };
-  const data = req.data;
+  let data = req.data;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const resp = await fetcher(url, {
       headers,
@@ -76,6 +88,11 @@ export const followEngineFetch = async (
       return resp;
     }
     if (!isWebUrl(next)) throw new Error("only http(s) responses are allowed");
+    if (_rewritesToGet(resp.status, method)) {
+      method = "GET";
+      data = undefined;
+      headers = _without(headers, STRIP_ON_REWRITE);
+    }
     const from = _origin(url);
     const to = _origin(next);
     if (!from || !to || from !== to) headers = _without(headers, STRIP_CROSS_ORIGIN);

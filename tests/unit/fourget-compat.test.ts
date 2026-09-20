@@ -81,6 +81,13 @@ describe("4get page mapping", () => {
     expect(map.get("pictures")?.method).toBe("image");
   });
 
+  test("an empty slot leaves that page alone without shifting the rest", () => {
+    const map = mapPages(FOURGET_PAGES.slice(0, 3), "web,,clips");
+    expect(map.get("images")?.method).toBe("image");
+    expect(map.get("clips")?.method).toBe("video");
+    expect(map.has("videos")).toBe(false);
+  });
+
   test("a rename onto a name a later page still wants keeps the rename", () => {
     const map = mapPages(FOURGET_PAGES.slice(0, 2), "images");
     expect(map.get("images")?.method).toBe("web");

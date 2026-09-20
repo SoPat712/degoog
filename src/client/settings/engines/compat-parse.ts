@@ -17,12 +17,18 @@ const _asRuntimeNeed = (raw: unknown): CompatRuntimeNeed | null => {
   return { module: raw.module, package: raw.package, missing: raw.missing === true };
 };
 
-const _asRuntimeNeeds = (raw: unknown): CompatRuntimeNeed[] => {
-  if (!Array.isArray(raw)) return [];
+const _stringList = (raw: unknown): string[] | null =>
+  Array.isArray(raw) && raw.every((entry) => typeof entry === "string")
+    ? [...(raw as string[])]
+    : null;
+
+const _asRuntimeNeeds = (raw: unknown): CompatRuntimeNeed[] | null => {
+  if (!Array.isArray(raw)) return null;
   const needs: CompatRuntimeNeed[] = [];
   for (const entry of raw) {
     const need = _asRuntimeNeed(entry);
-    if (need) needs.push(need);
+    if (!need) return null;
+    needs.push(need);
   }
   return needs;
 };
@@ -30,13 +36,18 @@ const _asRuntimeNeeds = (raw: unknown): CompatRuntimeNeed[] => {
 const _asCatalogItem = (raw: unknown): CompatCatalogItem | null => {
   if (!_isRecord(raw)) return null;
   if (typeof raw.code !== "string" || typeof raw.name !== "string") return null;
+  if (typeof raw.installed !== "boolean") return null;
+  const types = _stringList(raw.types);
+  const missingDeps = _stringList(raw.missingDeps);
+  const runtime = _asRuntimeNeeds(raw.runtime);
+  if (!types || !missingDeps || !runtime) return null;
   const item: CompatCatalogItem = {
     code: raw.code,
     name: raw.name,
-    types: _strings(raw.types),
-    installed: raw.installed === true,
-    missingDeps: _strings(raw.missingDeps),
-    runtime: _asRuntimeNeeds(raw.runtime),
+    types,
+    installed: raw.installed,
+    missingDeps,
+    runtime,
   };
   if (typeof raw.site === "string") item.site = raw.site;
   if (Array.isArray(raw.deps)) item.deps = _strings(raw.deps);

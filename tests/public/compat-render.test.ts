@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll } from "bun:test";
+import { describe, test, expect, afterAll, beforeAll } from "bun:test";
 import {
   CompatLayerId,
   COMPAT_LAYER_REPOS,
@@ -9,6 +9,8 @@ let compatGroups: (items: CompatCatalogItem[]) => { key: string; items: CompatCa
 let compatPackages: (item: CompatCatalogItem) => string[];
 let compatListHtml: (items: CompatCatalogItem[], layer: string) => string;
 let compatShellHtml: (id: CompatLayerId) => string;
+
+let priorGlobals: Record<string, PropertyDescriptor | undefined> = {};
 
 const makeItem = (over: Partial<CompatCatalogItem> = {}): CompatCatalogItem => ({
   code: "mojeek",
@@ -42,6 +44,10 @@ beforeAll(async () => {
       },
     };
   };
+  priorGlobals = {
+    window: Object.getOwnPropertyDescriptor(globalThis, "window"),
+    document: Object.getOwnPropertyDescriptor(globalThis, "document"),
+  };
   Object.assign(globalThis, {
     window: { scopedT: stubT },
     document: { createElement: createEl },
@@ -51,6 +57,13 @@ beforeAll(async () => {
   compatPackages = render.compatPackages;
   compatListHtml = render.compatListHtml;
   compatShellHtml = render.compatShellHtml;
+});
+
+afterAll(() => {
+  for (const [key, descriptor] of Object.entries(priorGlobals)) {
+    if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+    else delete (globalThis as Record<string, unknown>)[key];
+  }
 });
 
 describe("compatibility layer catalogue rendering", () => {

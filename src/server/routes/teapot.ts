@@ -10,6 +10,7 @@ import {
   htcpcpHeaders,
   isTeaMessage,
   isTeaVariety,
+  MEDIA_TEA,
   noAdditions,
   potProps,
   refuseCoffee,
@@ -41,7 +42,9 @@ const buildTeapotPage = async (locale?: string): Promise<string> => {
 };
 
 const showTeapot = async (c: Context): Promise<Response> => {
-  if (c.req.method === "HEAD") return refuseCoffee(null);
+  if (c.req.method === "HEAD") {
+    return refuseCoffee(null, wantsHtml(c) ? HTML_CONTENT_TYPE : MEDIA_TEA);
+  }
   if (c.req.method === "GET" && wantsHtml(c)) {
     const html = await buildTeapotPage(getLocale(c));
     return new Response(html, {

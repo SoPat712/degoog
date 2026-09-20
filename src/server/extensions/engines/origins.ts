@@ -38,16 +38,34 @@ const _storeOrigin = (repo: RepoInfo): EngineOrigin => {
   return { ...base, glyph: STORE_ORIGIN_GLYPH };
 };
 
+const _urlOf = (record: unknown, field: string): string | null => {
+  if (!record || typeof record !== "object") return null;
+  const value = (record as Record<string, unknown>)[field];
+  return typeof value === "string" && value.trim() ? value : null;
+};
+
 export const storeOrigins = async (): Promise<OriginMap> => {
   const origins = new Map<string, EngineOrigin>();
   try {
     const data = await readReposData();
-    const repos = new Map(
-      data.repos.map((repo) => [normalizeRepoUrl(repo.url), repo]),
-    );
+    const repos = new Map<string, RepoInfo>();
+    for (const repo of data.repos) {
+      const url = _urlOf(repo, "url");
+      if (!url) {
+        logger.warn(NS, "skipping a repos.json entry with no usable url");
+        continue;
+      }
+      repos.set(normalizeRepoUrl(url), repo);
+    }
     for (const item of data.installed) {
+      if (!item || typeof item !== "object") continue;
       if (item.type !== ExtensionStoreType.Engine) continue;
-      const repo = repos.get(normalizeRepoUrl(item.repoUrl));
+      const repoUrl = _urlOf(item, "repoUrl");
+      if (!repoUrl || typeof item.installedAs !== "string") {
+        logger.warn(NS, "skipping an installed entry with no usable repoUrl or name");
+        continue;
+      }
+      const repo = repos.get(normalizeRepoUrl(repoUrl));
       if (!repo) continue;
       origins.set(item.installedAs, _storeOrigin(repo));
     }

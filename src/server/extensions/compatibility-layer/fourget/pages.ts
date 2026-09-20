@@ -31,7 +31,7 @@ export const mapPages = (
   override: string | null,
 ): Map<string, FourGetPage> => {
   const renamed = override
-    ? override.split(",").map((type) => type.trim()).filter(Boolean)
+    ? override.split(",").map((type) => type.trim())
     : [];
   const out = new Map<string, FourGetPage>();
   pages.forEach((page, index) => {
